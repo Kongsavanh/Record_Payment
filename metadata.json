@@ -1,0 +1,7 @@
+{
+  "name": "Copy of ລະບົບບັນທຶກລາຍຮັບ-ລາຍຈ່າຍ (Lao Cash Tracker)",
+  "description": "A comprehensive financial recording system for businesses in Laos, featuring employee tracking, store management, and detailed financial reports in Lao language and Kip currency.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
