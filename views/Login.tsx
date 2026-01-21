@@ -2,8 +2,7 @@
 import React, { useState } from 'react';
 // Fix: Remove TRANSLATIONS from types import as it is defined in constants.ts
 import { User } from '../types';
-import { Lock, User as UserIcon, AlertCircle } from 'lucide-react';
-import { INITIAL_USERS } from '../constants';
+import { Lock, User as UserIcon, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
   users: User[];
@@ -13,6 +12,7 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
   const handleLogin = (e: React.FormEvent) => {
@@ -25,11 +25,15 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 animate-fadeIn">
         <div className="text-center mb-8">
-          <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
             <Lock className="w-10 h-10 text-emerald-600" />
           </div>
           <h1 className="text-2xl font-bold text-slate-800">ລະບົບບັນທຶກການເງິນ</h1>
@@ -37,9 +41,9 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 mb-6 border border-red-100">
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 mb-6 border border-red-100 animate-pulse">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <span className="text-sm">{error}</span>
+            <span className="text-sm font-medium">{error}</span>
           </div>
         )}
 
@@ -53,7 +57,7 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all hover:border-emerald-300"
                 placeholder="ຊື່ເຂົ້າໃຊ້..."
               />
             </div>
@@ -64,19 +68,27 @@ const Login: React.FC<LoginProps> = ({ users, onLogin }) => {
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                className="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all hover:border-emerald-300"
                 placeholder="••••••••"
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-emerald-500 transition-colors focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 
           <button
             type="submit"
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-emerald-200 transition-all transform hover:-translate-y-0.5"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg hover:shadow-emerald-200 transition-all transform active:scale-95"
           >
             ເຂົ້າສູ່ລະບົບ
           </button>
