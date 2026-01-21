@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   AppState, 
   User, 
@@ -39,12 +39,9 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async () => {
-    setIsLoading(true);
+  // Use useCallback to prevent unnecessary re-creations of the fetch function
+  const fetchInitialData = useCallback(async (showLoader = false) => {
+    if (showLoader) setIsLoading(true);
     try {
       const [usersRes, storesRes, shiftsRes, entriesRes] = await Promise.all([
         supabase.from('users').select('*'),
@@ -53,19 +50,43 @@ const App: React.FC = () => {
         supabase.from('entries').select('*, expenses(*)').order('created_at', { ascending: false })
       ]);
 
-      setState({
+      setState(prev => ({
+        ...prev,
         users: usersRes.data || [],
         stores: storesRes.data || [],
         shiftTypes: shiftsRes.data || [],
         entries: entriesRes.data || [],
-        currentUser: null,
-      });
+      }));
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
-      setIsLoading(false);
+      if (showLoader) setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchInitialData(true);
+
+    // Set up Realtime Subscription for all relevant tables
+    // This ensures that when any machine updates data, all other machines get the update
+    const channel = supabase
+      .channel('db-realtime-sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public' },
+        (payload) => {
+          console.log('Realtime change detected:', payload);
+          // When any change happens, re-fetch data to keep all clients in sync
+          fetchInitialData(false); 
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchInitialData]);
 
   const login = (user: User) => {
     setState(prev => ({ ...prev, currentUser: user }));
@@ -82,55 +103,42 @@ const App: React.FC = () => {
       .update({ name: updatedUser.name, password: updatedUser.password })
       .eq('id', updatedUser.id);
     
+    // Realtime will handle the state update for others; we update local state for immediate feedback
     if (!error) {
-      setState(prev => ({
-        ...prev,
-        users: prev.users.map(u => u.id === updatedUser.id ? updatedUser : u),
-        currentUser: prev.currentUser?.id === updatedUser.id ? updatedUser : prev.currentUser
-      }));
+      if (state.currentUser?.id === updatedUser.id) {
+        setState(prev => ({ ...prev, currentUser: updatedUser }));
+      }
     }
   };
 
   const addUser = async (user: User) => {
-    const { data, error } = await supabase.from('users').insert([user]).select();
-    if (data) {
-      setState(prev => ({ ...prev, users: [...prev.users, data[0]] }));
-    }
+    await supabase.from('users').insert([user]);
+    // State update handled by Realtime subscription
   };
 
   const removeUser = async (id: string) => {
-    const { error } = await supabase.from('users').delete().eq('id', id);
-    if (!error) {
-      setState(prev => ({ ...prev, users: prev.users.filter(u => u.id !== id) }));
-    }
+    await supabase.from('users').delete().eq('id', id);
+    // State update handled by Realtime subscription
   };
 
   const addStore = async (store: Store) => {
-    const { data, error } = await supabase.from('stores').insert([store]).select();
-    if (data) {
-      setState(prev => ({ ...prev, stores: [...prev.stores, data[0]] }));
-    }
+    await supabase.from('stores').insert([store]);
+    // State update handled by Realtime subscription
   };
 
   const removeStore = async (id: string) => {
-    const { error } = await supabase.from('stores').delete().eq('id', id);
-    if (!error) {
-      setState(prev => ({ ...prev, stores: prev.stores.filter(s => s.id !== id) }));
-    }
+    await supabase.from('stores').delete().eq('id', id);
+    // State update handled by Realtime subscription
   };
 
   const addShiftType = async (shift: ShiftType) => {
-    const { data, error } = await supabase.from('shift_types').insert([shift]).select();
-    if (data) {
-      setState(prev => ({ ...prev, shiftTypes: [...prev.shiftTypes, data[0]] }));
-    }
+    await supabase.from('shift_types').insert([shift]);
+    // State update handled by Realtime subscription
   };
 
   const removeShiftType = async (id: string) => {
-    const { error } = await supabase.from('shift_types').delete().eq('id', id);
-    if (!error) {
-      setState(prev => ({ ...prev, shiftTypes: prev.shiftTypes.filter(s => s.id !== id) }));
-    }
+    await supabase.from('shift_types').delete().eq('id', id);
+    // State update handled by Realtime subscription
   };
 
   const addEntry = async (entry: Entry) => {
@@ -147,27 +155,19 @@ const App: React.FC = () => {
       }));
       await supabase.from('expenses').insert(expensesWithId);
     }
-
-    if (data) {
-      const { data: fullEntry } = await supabase.from('entries').select('*, expenses(*)').eq('id', data[0].id).single();
-      if (fullEntry) {
-        setState(prev => ({ ...prev, entries: [fullEntry, ...prev.entries] }));
-      }
-    }
+    // State update handled by Realtime subscription
   };
 
   const deleteEntry = async (id: string) => {
-    const { error } = await supabase.from('entries').delete().eq('id', id);
-    if (!error) {
-      setState(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== id) }));
-    }
+    await supabase.from('entries').delete().eq('id', id);
+    // State update handled by Realtime subscription
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
         <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-bold">ກຳລັງເຊື່ອມຕໍ່ຖານຂໍ້ມູນ Cloud...</p>
+        <p className="text-slate-500 font-bold">ກຳລັງເຊື່ອມຕໍ່ລະບົບ Real-time...</p>
       </div>
     );
   }
