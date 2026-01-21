@@ -113,19 +113,19 @@ const App: React.FC = () => {
       <header className="bg-white text-slate-900 border-b border-slate-100 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-xl font-black text-emerald-600 flex items-center gap-2">
-            <div className="bg-emerald-600 p-1.5 rounded-lg text-white">
+            <div className="bg-emerald-600 p-1.5 rounded-lg text-white shadow-lg shadow-emerald-100">
               <HomeIcon className="w-5 h-5" />
             </div>
             <span className="tracking-tight">{TRANSLATIONS.appName}</span>
           </h1>
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-slate-800 leading-none">{state.currentUser.name}</p>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{state.currentUser.role}</p>
+              <p className="text-sm font-black text-slate-800 leading-none">{state.currentUser.name}</p>
+              <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">{state.currentUser.role}</p>
             </div>
             <button 
               onClick={logout}
-              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
               title={TRANSLATIONS.logout}
             >
               <LogOut className="w-5 h-5" />
@@ -164,6 +164,7 @@ const App: React.FC = () => {
             onRemoveStore={removeStore}
             onAddShift={addShiftType}
             onRemoveShift={removeShiftType}
+            onUpdateUser={updateUser}
           />
         )}
         {activeTab === 'profile' && (
