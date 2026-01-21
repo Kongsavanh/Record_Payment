@@ -10,15 +10,16 @@ import {
 import { TRANSLATIONS as T } from '../constants';
 import { getTodayStr, formatCurrency } from '../utils';
 import NumberInput from '../components/NumberInput';
-import { Plus, Trash2, Camera, Save, ReceiptText, Calculator, X } from 'lucide-react';
+import { Plus, Trash2, Camera, Save, ReceiptText, Calculator, X, Loader2 } from 'lucide-react';
 
 interface EntryFormProps {
   state: AppState;
-  onAddEntry: (entry: Entry) => void;
+  onAddEntry: (entry: Entry) => Promise<void>;
   onSuccess: () => void;
 }
 
 const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) => {
+  const [isSaving, setIsSaving] = useState(false);
   const [date, setDate] = useState(getTodayStr());
   const [storeId, setStoreId] = useState(state.stores[0]?.id || '');
   const [shiftTypeId, setShiftTypeId] = useState(state.shiftTypes[0]?.id || '');
@@ -65,38 +66,45 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
     }
   };
 
-  const handleSaveEntry = () => {
+  const handleSaveEntry = async () => {
     if (!storeId || !shiftTypeId) {
         alert('ກະລຸນາເລືອກຮ້ານ ແລະ ປະເພດກະ');
         return;
     }
 
-    const entryId = crypto.randomUUID();
-    const newEntry: Entry = {
-      id: entryId,
-      date,
-      store_id: storeId,
-      user_id: state.currentUser?.id || '',
-      shift_type_id: shiftTypeId,
-      total_revenue: totalRevenue,
-      transfer_amount: transferAmount,
-      expected_cash: expectedCash,
-      actual_cash_in_drawer: actualCashInDrawer,
-      difference,
-      expenses: expenses.map(ex => ({ ...ex, entry_id: entryId })),
-      total_expenses: totalExpenses,
-      final_balance: finalBalance,
-      created_at: new Date().toISOString()
-    };
-    
-    onAddEntry(newEntry);
-    
-    // UI Feedback
-    setTotalRevenue(0);
-    setTransferAmount(0);
-    setActualCashInDrawer(0);
-    setExpenses([]);
-    onSuccess();
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+      const entryId = crypto.randomUUID();
+      const newEntry: Entry = {
+        id: entryId,
+        date,
+        store_id: storeId,
+        user_id: state.currentUser?.id || '',
+        shift_type_id: shiftTypeId,
+        total_revenue: totalRevenue,
+        transfer_amount: transferAmount,
+        expected_cash: expectedCash,
+        actual_cash_in_drawer: actualCashInDrawer,
+        difference,
+        expenses: expenses.map(ex => ({ ...ex, entry_id: entryId })),
+        total_expenses: totalExpenses,
+        final_balance: finalBalance,
+        created_at: new Date().toISOString()
+      };
+      
+      await onAddEntry(newEntry);
+      
+      // UI Feedback
+      alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ');
+      onSuccess();
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      alert('ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກຂໍ້ມູນ');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -229,7 +237,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
             )}
             <button 
               onClick={handleAddExpense}
-              disabled={!newExpDesc || newExpAmount <= 0}
+              disabled={!newExpDesc || newExpAmount <= 0 || isSaving}
               className="ml-auto flex items-center gap-2 px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <Plus className="w-5 h-5" />
@@ -257,7 +265,8 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
                 </div>
                 <button 
                   onClick={() => removeExpense(exp.id)} 
-                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                  disabled={isSaving}
+                  className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-all opacity-0 group-hover:opacity-100 disabled:hidden"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
@@ -284,10 +293,20 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
 
           <button 
             onClick={handleSaveEntry}
-            className="w-full flex items-center justify-center gap-3 px-10 py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-100 transition-all hover:-translate-y-1"
+            disabled={isSaving}
+            className="w-full flex items-center justify-center gap-3 px-10 py-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-100 transition-all hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
           >
-            <Save className="w-6 h-6" />
-            <span>{T.save}</span>
+            {isSaving ? (
+              <>
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span>ກຳລັງບັນທຶກ...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-6 h-6" />
+                <span>{T.save}</span>
+              </>
+            )}
           </button>
         </div>
       </div>
