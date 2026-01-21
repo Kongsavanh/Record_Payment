@@ -9,9 +9,6 @@ import {
   ShiftType 
 } from './types';
 import { 
-  INITIAL_USERS, 
-  INITIAL_STORES, 
-  INITIAL_SHIFT_TYPES, 
   TRANSLATIONS 
 } from './constants';
 import Login from './views/Login';
@@ -20,39 +17,55 @@ import EntryForm from './views/EntryForm';
 import Admin from './views/Admin';
 import Reports from './views/Reports';
 import Profile from './views/Profile';
+import { supabase } from './lib/supabase';
 import { 
   Home as HomeIcon, 
   FileText, 
   Settings, 
   UserCircle, 
   LogOut,
-  Plus
+  Plus,
+  Loader2
 } from 'lucide-react';
 
 const App: React.FC = () => {
-  const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem('lao_cash_tracker_state');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return { ...parsed, currentUser: null }; // Reset session on reload
-    }
-    return {
-      users: INITIAL_USERS,
-      stores: INITIAL_STORES,
-      shiftTypes: INITIAL_SHIFT_TYPES,
-      entries: [],
-      currentUser: null,
-    };
+  const [state, setState] = useState<AppState>({
+    users: [],
+    stores: [],
+    shiftTypes: [],
+    entries: [],
+    currentUser: null,
   });
-
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
   useEffect(() => {
-    localStorage.setItem('lao_cash_tracker_state', JSON.stringify({
-      ...state,
-      currentUser: null // Don't persist current user login for security
-    }));
-  }, [state]);
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setIsLoading(true);
+    try {
+      const [usersRes, storesRes, shiftsRes, entriesRes] = await Promise.all([
+        supabase.from('users').select('*'),
+        supabase.from('stores').select('*'),
+        supabase.from('shift_types').select('*'),
+        supabase.from('entries').select('*, expenses(*)').order('created_at', { ascending: false })
+      ]);
+
+      setState({
+        users: usersRes.data || [],
+        stores: storesRes.data || [],
+        shiftTypes: shiftsRes.data || [],
+        entries: entriesRes.data || [],
+        currentUser: null,
+      });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const login = (user: User) => {
     setState(prev => ({ ...prev, currentUser: user }));
@@ -63,44 +76,100 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, currentUser: null }));
   };
 
-  const updateUser = (updatedUser: User) => {
-    setState(prev => ({
-      ...prev,
-      users: prev.users.map(u => u.id === updatedUser.id ? updatedUser : u),
-      currentUser: prev.currentUser?.id === updatedUser.id ? updatedUser : prev.currentUser
-    }));
+  const updateUser = async (updatedUser: User) => {
+    const { error } = await supabase
+      .from('users')
+      .update({ name: updatedUser.name, password: updatedUser.password })
+      .eq('id', updatedUser.id);
+    
+    if (!error) {
+      setState(prev => ({
+        ...prev,
+        users: prev.users.map(u => u.id === updatedUser.id ? updatedUser : u),
+        currentUser: prev.currentUser?.id === updatedUser.id ? updatedUser : prev.currentUser
+      }));
+    }
   };
 
-  const addUser = (user: User) => {
-    setState(prev => ({ ...prev, users: [...prev.users, user] }));
+  const addUser = async (user: User) => {
+    const { data, error } = await supabase.from('users').insert([user]).select();
+    if (data) {
+      setState(prev => ({ ...prev, users: [...prev.users, data[0]] }));
+    }
   };
 
-  const removeUser = (id: string) => {
-    setState(prev => ({ ...prev, users: prev.users.filter(u => u.id !== id) }));
+  const removeUser = async (id: string) => {
+    const { error } = await supabase.from('users').delete().eq('id', id);
+    if (!error) {
+      setState(prev => ({ ...prev, users: prev.users.filter(u => u.id !== id) }));
+    }
   };
 
-  const addStore = (store: Store) => {
-    setState(prev => ({ ...prev, stores: [...prev.stores, store] }));
+  const addStore = async (store: Store) => {
+    const { data, error } = await supabase.from('stores').insert([store]).select();
+    if (data) {
+      setState(prev => ({ ...prev, stores: [...prev.stores, data[0]] }));
+    }
   };
 
-  const removeStore = (id: string) => {
-    setState(prev => ({ ...prev, stores: prev.stores.filter(s => s.id !== id) }));
+  const removeStore = async (id: string) => {
+    const { error } = await supabase.from('stores').delete().eq('id', id);
+    if (!error) {
+      setState(prev => ({ ...prev, stores: prev.stores.filter(s => s.id !== id) }));
+    }
   };
 
-  const addShiftType = (shift: ShiftType) => {
-    setState(prev => ({ ...prev, shiftTypes: [...prev.shiftTypes, shift] }));
+  const addShiftType = async (shift: ShiftType) => {
+    const { data, error } = await supabase.from('shift_types').insert([shift]).select();
+    if (data) {
+      setState(prev => ({ ...prev, shiftTypes: [...prev.shiftTypes, data[0]] }));
+    }
   };
 
-  const removeShiftType = (id: string) => {
-    setState(prev => ({ ...prev, shiftTypes: prev.shiftTypes.filter(s => s.id !== id) }));
+  const removeShiftType = async (id: string) => {
+    const { error } = await supabase.from('shift_types').delete().eq('id', id);
+    if (!error) {
+      setState(prev => ({ ...prev, shiftTypes: prev.shiftTypes.filter(s => s.id !== id) }));
+    }
   };
 
-  const addEntry = (entry: Entry) => {
-    setState(prev => ({ ...prev, entries: [entry, ...prev.entries] }));
+  const addEntry = async (entry: Entry) => {
+    const { expenses, ...entryData } = entry;
+    const { data, error } = await supabase.from('entries').insert([entryData]).select();
+    
+    if (data && expenses.length > 0) {
+      const entryId = data[0].id;
+      const expensesWithId = expenses.map(ex => ({ 
+        entry_id: entryId, 
+        amount: ex.amount, 
+        description: ex.description, 
+        image_url: ex.image_url 
+      }));
+      await supabase.from('expenses').insert(expensesWithId);
+    }
+
+    if (data) {
+      const { data: fullEntry } = await supabase.from('entries').select('*, expenses(*)').eq('id', data[0].id).single();
+      if (fullEntry) {
+        setState(prev => ({ ...prev, entries: [fullEntry, ...prev.entries] }));
+      }
+    }
   };
 
-  const deleteEntry = (id: string) => {
+  const deleteEntry = async (id: string) => {
+    const { error } = await supabase.from('entries').delete().eq('id', id);
+    if (!error) {
       setState(prev => ({ ...prev, entries: prev.entries.filter(e => e.id !== id) }));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+        <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
+        <p className="text-slate-500 font-bold">ກຳລັງເຊື່ອມຕໍ່ຖານຂໍ້ມູນ Cloud...</p>
+      </div>
+    );
   }
 
   if (!state.currentUser) {
@@ -109,7 +178,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Header */}
       <header className="bg-white text-slate-900 border-b border-slate-100 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <h1 className="text-xl font-black text-emerald-600 flex items-center gap-2">
@@ -134,7 +202,6 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 max-w-6xl mx-auto w-full p-4 pb-28">
         {activeTab === 'home' && (
           <Home 
@@ -175,7 +242,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Mobile Navigation */}
       <nav className="bg-white/80 backdrop-blur-lg border-t border-slate-100 fixed bottom-0 left-0 right-0 z-50 pb-safe">
         <div className="max-w-md mx-auto flex justify-between items-center px-6 h-20">
           <button 
@@ -194,7 +260,6 @@ const App: React.FC = () => {
             <span className="text-[10px] font-bold">{TRANSLATIONS.reports}</span>
           </button>
 
-          {/* Central Plus Button */}
           <div className="relative -top-8">
             <button 
               onClick={() => setActiveTab('record')}
@@ -213,7 +278,7 @@ const App: React.FC = () => {
               <span className="text-[10px] font-bold">{TRANSLATIONS.adminPanel}</span>
             </button>
           ) : (
-            <div className="w-12"></div> // Spacer to maintain layout
+            <div className="w-12"></div>
           )}
           
           <button 

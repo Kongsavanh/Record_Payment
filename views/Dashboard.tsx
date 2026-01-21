@@ -39,11 +39,12 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onAddEntry }) => {
 
   const handleAddExpense = () => {
     if (newExpAmount <= 0 || !newExpDesc) return;
+    // Fix: Use image_url instead of imageUrl to match Expense interface
     const exp: Expense = {
       id: crypto.randomUUID(),
       amount: newExpAmount,
       description: newExpDesc,
-      imageUrl: newExpImg || undefined,
+      image_url: newExpImg || undefined,
     };
     setExpenses([...expenses, exp]);
     setNewExpAmount(0);
@@ -72,21 +73,22 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onAddEntry }) => {
         return;
     }
 
+    // Fix: Map property names to match the snake_case fields in Entry interface
     const newEntry: Entry = {
       id: crypto.randomUUID(),
       date,
-      storeId,
-      userId: state.currentUser?.id || '',
-      shiftTypeId,
-      totalRevenue,
-      transferAmount,
-      expectedCash,
-      actualCashInDrawer,
+      store_id: storeId,
+      user_id: state.currentUser?.id || '',
+      shift_type_id: shiftTypeId,
+      total_revenue: totalRevenue,
+      transfer_amount: transferAmount,
+      expected_cash: expectedCash,
+      actual_cash_in_drawer: actualCashInDrawer,
       difference,
       expenses,
-      totalExpenses,
-      finalBalance,
-      createdAt: new Date().toISOString()
+      total_expenses: totalExpenses,
+      final_balance: finalBalance,
+      created_at: new Date().toISOString()
     };
     onAddEntry(newEntry);
     
@@ -244,8 +246,9 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onAddEntry }) => {
                     <td className="py-4 text-slate-700">{exp.description}</td>
                     <td className="py-4 text-right font-semibold text-slate-900">{formatCurrency(exp.amount)}</td>
                     <td className="py-4 flex justify-center">
-                      {exp.imageUrl ? (
-                        <img src={exp.imageUrl} className="w-10 h-10 object-cover rounded shadow-sm border border-slate-200" alt="Receipt" />
+                      {/* Fix: Use image_url instead of imageUrl */}
+                      {exp.image_url ? (
+                        <img src={exp.image_url} className="w-10 h-10 object-cover rounded shadow-sm border border-slate-200" alt="Receipt" />
                       ) : (
                         <span className="text-xs text-slate-300">ບໍ່ມີ</span>
                       )}

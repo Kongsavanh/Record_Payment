@@ -48,20 +48,20 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
     return state.entries.filter(e => {
       const entryDate = e.date;
       const dateMatch = entryDate >= startDate && entryDate <= endDate;
-      const storeMatch = filterStore === 'all' || e.storeId === filterStore;
+      const storeMatch = filterStore === 'all' || e.store_id === filterStore;
       const targetUserId = isStaff ? state.currentUser?.id : filterUser;
-      const userMatch = targetUserId === 'all' || e.userId === targetUserId;
+      const userMatch = targetUserId === 'all' || e.user_id === targetUserId;
       return dateMatch && storeMatch && userMatch;
     });
   }, [state.entries, startDate, endDate, filterStore, filterUser, isStaff, state.currentUser]);
 
   const totals = useMemo(() => {
     return filteredEntries.reduce((acc, curr) => ({
-      rev: acc.rev + curr.totalRevenue,
-      trans: acc.trans + curr.transferAmount,
-      exp: acc.exp + curr.totalExpenses,
-      bal: acc.bal + curr.finalBalance,
-      cashInDrawer: acc.cashInDrawer + curr.actualCashInDrawer
+      rev: acc.rev + curr.total_revenue,
+      trans: acc.trans + curr.transfer_amount,
+      exp: acc.exp + curr.total_expenses,
+      bal: acc.bal + curr.final_balance,
+      cashInDrawer: acc.cashInDrawer + curr.actual_cash_in_drawer
     }), { rev: 0, trans: 0, exp: 0, bal: 0, cashInDrawer: 0 });
   }, [filteredEntries]);
 
@@ -78,14 +78,14 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
   const exportToExcel = () => {
     const data = filteredEntries.map(e => ({
       'ວັນທີ': e.date,
-      'ຮ້ານຄ້າ': getStoreName(e.storeId),
-      'ພະນັກງານ': getUserName(e.userId),
-      'ປະເພດກະ': getShiftName(e.shiftTypeId),
-      'ລາຍໄດ້ລວມ': e.totalRevenue,
-      'ຍອດໂອນ': e.transferAmount,
-      'ເງິນສົດໃນລິ້ນຊັກ': e.actualCashInDrawer,
-      'ຄ່າໃຊ້ຈ່າຍ': e.totalExpenses,
-      'ຍອດຄົງເຫຼືອຈິງ': e.finalBalance
+      'ຮ້ານຄ້າ': getStoreName(e.store_id),
+      'ພະນັກງານ': getUserName(e.user_id),
+      'ປະເພດກະ': getShiftName(e.shift_type_id),
+      'ລາຍໄດ້ລວມ': e.total_revenue,
+      'ຍອດໂອນ': e.transfer_amount,
+      'ເງິນສົດໃນລິ້ນຊັກ': e.actual_cash_in_drawer,
+      'ຄ່າໃຊ້ຈ່າຍ': e.total_expenses,
+      'ຍອດຄົງເຫຼືອຈິງ': e.final_balance
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -124,7 +124,6 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
@@ -210,14 +209,12 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
         </div>
       </div>
 
-      {/* Report Container for PDF Export */}
       <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-3xl">
         <div className="hidden pdf-only flex flex-col items-center mb-8">
            <h1 className="text-2xl font-bold text-slate-800">{TRANSLATIONS.appName}</h1>
            <p className="text-slate-500">ລາຍງານລະຫວ່າງວັນທີ: {formatDate(startDate)} ຫາ {formatDate(endDate)}</p>
         </div>
 
-        {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
             <div className="bg-emerald-100 p-3 rounded-xl">
@@ -257,7 +254,6 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
           </div>
         </div>
 
-        {/* Report Table */}
         <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -281,31 +277,31 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <ShoppingBag className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">{getStoreName(entry.storeId)}</span>
+                        <span className="text-sm text-slate-600">{getStoreName(entry.store_id)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">{getUserName(entry.userId)}</span>
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{getShiftName(entry.shiftTypeId)}</span>
+                        <span className="text-sm text-slate-600">{getUserName(entry.user_id)}</span>
+                        <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{getShiftName(entry.shift_type_id)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-slate-900">{formatCurrency(entry.totalRevenue)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-slate-900">{formatCurrency(entry.total_revenue)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-sm font-bold text-slate-700">{formatCurrency(entry.transferAmount)}</span>
+                        <span className="text-sm font-bold text-slate-700">{formatCurrency(entry.transfer_amount)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Wallet className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-sm font-bold text-slate-800">{formatCurrency(entry.actualCashInDrawer)}</span>
+                        <span className="text-sm font-bold text-slate-800">{formatCurrency(entry.actual_cash_in_drawer)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-500">{formatCurrency(entry.totalExpenses)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-emerald-600">{formatCurrency(entry.finalBalance)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-500">{formatCurrency(entry.total_expenses)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-emerald-600">{formatCurrency(entry.final_balance)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-center no-print">
                       <button 
                         onClick={() => handleDelete(entry.id)}
@@ -316,26 +312,11 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
                     </td>
                   </tr>
                 ))}
-                {filteredEntries.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="px-6 py-12 text-center text-slate-400 italic">
-                      ບໍ່ພົບຂໍ້ມູນຕາມເງື່ອນໄຂທີ່ເລືອກ
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-      
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .pdf-only { display: flex !important; }
-        }
-        .pdf-only { display: none; }
-      `}</style>
     </div>
   );
 };

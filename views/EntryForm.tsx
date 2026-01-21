@@ -27,7 +27,6 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
   const [actualCashInDrawer, setActualCashInDrawer] = useState(0);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   
-  // New Expense state
   const [newExpAmount, setNewExpAmount] = useState(0);
   const [newExpDesc, setNewExpDesc] = useState('');
   const [newExpImg, setNewExpImg] = useState<string | null>(null);
@@ -43,7 +42,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
       id: crypto.randomUUID(),
       amount: newExpAmount,
       description: newExpDesc,
-      imageUrl: newExpImg || undefined,
+      image_url: newExpImg || undefined,
     };
     setExpenses([...expenses, exp]);
     setNewExpAmount(0);
@@ -72,31 +71,32 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
         return;
     }
 
+    const entryId = crypto.randomUUID();
     const newEntry: Entry = {
-      id: crypto.randomUUID(),
+      id: entryId,
       date,
-      storeId,
-      userId: state.currentUser?.id || '',
-      shiftTypeId,
-      totalRevenue,
-      transferAmount,
-      expectedCash,
-      actualCashInDrawer,
+      store_id: storeId,
+      user_id: state.currentUser?.id || '',
+      shift_type_id: shiftTypeId,
+      total_revenue: totalRevenue,
+      transfer_amount: transferAmount,
+      expected_cash: expectedCash,
+      actual_cash_in_drawer: actualCashInDrawer,
       difference,
-      expenses,
-      totalExpenses,
-      finalBalance,
-      createdAt: new Date().toISOString()
+      expenses: expenses.map(ex => ({ ...ex, entry_id: entryId })),
+      total_expenses: totalExpenses,
+      final_balance: finalBalance,
+      created_at: new Date().toISOString()
     };
+    
     onAddEntry(newEntry);
     
-    // Reset form
+    // UI Feedback
     setTotalRevenue(0);
     setTransferAmount(0);
     setActualCashInDrawer(0);
     setExpenses([]);
     onSuccess();
-    alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ');
   };
 
   return (
@@ -115,7 +115,6 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Top Section: Basic Info */}
           <div className="space-y-5">
             <div>
               <label className="text-sm font-bold text-slate-700 mb-1.5 block">{T.date}</label>
@@ -148,7 +147,6 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
             </div>
           </div>
 
-          {/* Money Section */}
           <div className="space-y-5">
             <NumberInput 
               label={T.totalRevenue}
@@ -186,7 +184,6 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
         </div>
       </div>
 
-      {/* Expenses Section */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-red-50 rounded-2xl text-red-500">
@@ -246,8 +243,8 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
             {expenses.map((exp) => (
               <div key={exp.id} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-slate-200 transition-all group">
                 <div className="flex items-center gap-4">
-                  {exp.imageUrl ? (
-                    <img src={exp.imageUrl} className="w-12 h-12 object-cover rounded-xl shadow-sm border border-slate-200" alt="Receipt" />
+                  {exp.image_url ? (
+                    <img src={exp.image_url} className="w-12 h-12 object-cover rounded-xl shadow-sm border border-slate-200" alt="Receipt" />
                   ) : (
                     <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300">
                       <Camera className="w-5 h-5" />

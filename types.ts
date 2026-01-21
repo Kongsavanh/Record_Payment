@@ -24,26 +24,27 @@ export interface ShiftType {
 
 export interface Expense {
   id: string;
+  entry_id?: string;
   amount: number;
   description: string;
-  imageUrl?: string;
+  image_url?: string;
 }
 
 export interface Entry {
   id: string;
   date: string;
-  storeId: string;
-  userId: string;
-  shiftTypeId: string;
-  totalRevenue: number;
-  transferAmount: number;
-  expectedCash: number; // calculated: totalRevenue - transferAmount
-  actualCashInDrawer: number;
-  difference: number; // calculated: expectedCash - actualCashInDrawer
+  store_id: string;
+  user_id: string;
+  shift_type_id: string;
+  total_revenue: number;
+  transfer_amount: number;
+  expected_cash: number;
+  actual_cash_in_drawer: number;
+  difference: number;
   expenses: Expense[];
-  totalExpenses: number;
-  finalBalance: number; // calculated: actualCashInDrawer - totalExpenses
-  createdAt: string;
+  total_expenses: number;
+  final_balance: number;
+  created_at: string;
 }
 
 export interface AppState {
