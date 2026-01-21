@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -56,7 +55,9 @@ import { createClient } from '@supabase/supabase-js';
  * );
  */
 
-const supabaseUrl = (window as any).process?.env?.SUPABASE_URL || 'https://ixgchmwlsmtvnsubqpza.supabase.co';
-const supabaseAnonKey = (window as any).process?.env?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4Z2NobXdsc210dm5zdWJxcHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5Nzk4MjgsImV4cCI6MjA4NDU1NTgyOH0.IohrIt1IoQVh3SbvRUZyA7N27bDC8lTedBjYNeNFpFE';
+// Use Vite's import.meta.env for Vercel compatibility, with a fallback for local testing
+// Fix: Use type assertion on import.meta to bypass TypeScript error "Property 'env' does not exist on type 'ImportMeta'"
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || 'https://ixgchmwlsmtvnsubqpza.supabase.co';
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4Z2NobXdsc210dm5zdWJxcHphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg5Nzk4MjgsImV4cCI6MjA4NDU1NTgyOH0.IohrIt1IoQVh3SbvRUZyA7N27bDC8lTedBjYNeNFpFE';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
