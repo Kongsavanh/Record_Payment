@@ -8,21 +8,7 @@ import {
   ShiftType 
 } from '../types';
 import { TRANSLATIONS } from '../constants';
-import { supabase } from '../lib/supabase';
-import { 
-  Users, 
-  Store as StoreIcon, 
-  Clock, 
-  Plus, 
-  Trash2, 
-  Shield, 
-  Key, 
-  UserPlus, 
-  Activity,
-  CheckCircle2,
-  XCircle,
-  Loader2
-} from 'lucide-react';
+import { Users, Store as StoreIcon, Clock, Plus, Trash2, Shield, Key, UserPlus, UserCog } from 'lucide-react';
 
 interface AdminProps {
   state: AppState;
@@ -32,7 +18,7 @@ interface AdminProps {
   onRemoveStore: (id: string) => void;
   onAddShift: (shift: ShiftType) => void;
   onRemoveShift: (id: string) => void;
-  onUpdateUser?: (user: User) => void;
+  onUpdateUser?: (user: User) => void; // Added for password reset support
 }
 
 const Admin: React.FC<AdminProps> = ({ 
@@ -45,41 +31,20 @@ const Admin: React.FC<AdminProps> = ({
   onRemoveShift,
   onUpdateUser
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'stores' | 'shifts' | 'system'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'stores' | 'shifts'>('users');
   
-  // Input states
+  // Input states for New User
   const [newUserName, setNewUserName] = useState('');
   const [newUserUsername, setNewUserUsername] = useState('');
   const [newUserPass, setNewUserPass] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>(UserRole.STAFF);
-  const [newStoreName, setNewStoreName] = useState('');
-  const [newShiftName, setNewShiftName] = useState('');
 
-  // Password reset
+  // States for Password Reset
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState('');
 
-  // System Diagnosis
-  const [diagStatus, setDiagStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [diagMsg, setDiagMsg] = useState('');
-
-  const checkConnection = async () => {
-    setDiagStatus('loading');
-    setDiagMsg('ກຳລັງທົດສອບການເຊື່ອມຕໍ່ຖານຂໍ້ມູນ...');
-    try {
-      const start = Date.now();
-      const { error } = await supabase.from('users').select('count', { count: 'exact', head: true });
-      const duration = Date.now() - start;
-      
-      if (error) throw error;
-      
-      setDiagStatus('success');
-      setDiagMsg(`ເຊື່ອມຕໍ່ສຳເລັດ! ຄວາມໄວການຕອບສະໜອງ: ${duration}ms`);
-    } catch (err: any) {
-      setDiagStatus('error');
-      setDiagMsg(`ການເຊື່ອມຕໍ່ມີບັນຫາ: ${err.message || 'Timed out'}`);
-    }
-  };
+  const [newStoreName, setNewStoreName] = useState('');
+  const [newShiftName, setNewShiftName] = useState('');
 
   const handleAddUser = () => {
     if (!newUserName || !newUserUsername || !newUserPass) return;
@@ -90,7 +55,10 @@ const Admin: React.FC<AdminProps> = ({
       password: newUserPass,
       role: newUserRole
     });
-    setNewUserName(''); setNewUserUsername(''); setNewUserPass('');
+    setNewUserName('');
+    setNewUserUsername('');
+    setNewUserPass('');
+    setNewUserRole(UserRole.STAFF);
   };
 
   const handleResetPassword = (userId: string) => {
@@ -104,78 +72,165 @@ const Admin: React.FC<AdminProps> = ({
     }
   };
 
+  const handleAddStore = () => {
+    if (!newStoreName) return;
+    onAddStore({ id: crypto.randomUUID(), name: newStoreName });
+    setNewStoreName('');
+  };
+
+  const handleAddShift = () => {
+    if (!newShiftName) return;
+    onAddShift({ id: crypto.randomUUID(), name: newShiftName });
+    setNewShiftName('');
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Navigation */}
-      <div className="flex border-b border-slate-200 gap-6 overflow-x-auto no-scrollbar pb-1">
-        <button onClick={() => setActiveTab('users')} className={`pb-3 text-sm font-bold relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'users' ? 'text-emerald-600' : 'text-slate-400'}`}>
-          <Users className="w-4 h-4" /> <span>ຜູ້ໃຊ້</span>
+      <div className="flex border-b border-slate-200 gap-6 overflow-x-auto no-scrollbar">
+        <button 
+          onClick={() => setActiveTab('users')}
+          className={`pb-3 text-sm font-bold transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'users' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <Users className="w-4 h-4" />
+          <span>ຈັດການຜູ້ໃຊ້</span>
           {activeTab === 'users' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
         </button>
-        <button onClick={() => setActiveTab('stores')} className={`pb-3 text-sm font-bold relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'stores' ? 'text-emerald-600' : 'text-slate-400'}`}>
-          <StoreIcon className="w-4 h-4" /> <span>ຮ້ານຄ້າ</span>
+        <button 
+          onClick={() => setActiveTab('stores')}
+          className={`pb-3 text-sm font-bold transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'stores' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <StoreIcon className="w-4 h-4" />
+          <span>ຮ້ານຄ້າ</span>
           {activeTab === 'stores' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
         </button>
-        <button onClick={() => setActiveTab('shifts')} className={`pb-3 text-sm font-bold relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'shifts' ? 'text-emerald-600' : 'text-slate-400'}`}>
-          <Clock className="w-4 h-4" /> <span>ປະເພດກະ</span>
+        <button 
+          onClick={() => setActiveTab('shifts')}
+          className={`pb-3 text-sm font-bold transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'shifts' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>ປະເພດກະ</span>
           {activeTab === 'shifts' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
-        </button>
-        <button onClick={() => setActiveTab('system')} className={`pb-3 text-sm font-bold relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'system' ? 'text-emerald-600' : 'text-slate-400'}`}>
-          <Activity className="w-4 h-4" /> <span>ລະບົບ</span>
-          {activeTab === 'system' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
         </button>
       </div>
 
+      {/* Content */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
         {activeTab === 'users' && (
           <div className="space-y-8">
+            {/* Add User Form */}
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+              <div className="flex items-center gap-2 mb-4">
+                <UserPlus className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-800">ເພີ່ມບັນຊີຜູ້ໃຊ້ໃໝ່</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                 <div className="lg:col-span-1">
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">ຊື່-ນາມສະກຸນ</label>
-                  <input type="text" value={newUserName} onChange={(e) => setNewUserName(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ຊື່ພະນັກງານ..." />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ຊື່-ນາມສະກຸນ</label>
+                  <input 
+                    type="text" 
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    placeholder="ນາງ ສົມໃຈ"
+                  />
                 </div>
                 <div className="lg:col-span-1">
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">Username</label>
-                  <input type="text" value={newUserUsername} onChange={(e) => setNewUserUsername(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ຊື່ເຂົ້າລະບົບ..." />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ຊື່ຜູ້ໃຊ້ (Login)</label>
+                  <input 
+                    type="text" 
+                    value={newUserUsername}
+                    onChange={(e) => setNewUserUsername(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    placeholder="somjai_123"
+                  />
                 </div>
                 <div className="lg:col-span-1">
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">ລະຫັດຜ່ານ</label>
-                  <input type="text" value={newUserPass} onChange={(e) => setNewUserPass(e.target.value)} className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="••••••" />
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ລະຫັດຜ່ານ</label>
+                  <input 
+                    type="text" 
+                    value={newUserPass}
+                    onChange={(e) => setNewUserPass(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                    placeholder="••••••"
+                  />
                 </div>
                 <div className="lg:col-span-1">
-                  <label className="text-xs font-bold text-slate-500 mb-1 block">ສິດທິ</label>
-                  <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value as UserRole)} className="w-full px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500">
-                    <option value={UserRole.STAFF}>ພະນັກງານ</option>
-                    <option value={UserRole.ADMIN}>ຜູ້ດູແລ</option>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ສິດທິການໃຊ້</label>
+                  <select 
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white appearance-none"
+                  >
+                    <option value={UserRole.STAFF}>ພະນັກງານ (Staff)</option>
+                    <option value={UserRole.ADMIN}>ຜູ້ດູແລ (Admin)</option>
                   </select>
                 </div>
-                <button onClick={handleAddUser} className="flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100"><Plus className="w-4 h-4" /> ເພີ່ມ</button>
+                <button 
+                  onClick={handleAddUser}
+                  className="flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{TRANSLATIONS.add}</span>
+                </button>
               </div>
             </div>
 
+            {/* Users List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {state.users.map(user => (
-                <div key={user.id} className="p-5 border border-slate-100 rounded-2xl bg-white hover:border-emerald-200 transition-all">
-                  <div className="flex items-center justify-between">
+                <div key={user.id} className="p-5 border border-slate-100 rounded-2xl bg-white hover:border-emerald-200 transition-all group relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className={`p-3 rounded-2xl ${user.role === UserRole.ADMIN ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-600'}`}>
                         {user.role === UserRole.ADMIN ? <Shield className="w-6 h-6" /> : <Users className="w-6 h-6" />}
                       </div>
                       <div>
-                        <h4 className="font-bold text-slate-800">{user.name}</h4>
-                        <span className="text-xs text-slate-400">@{user.username}</span>
+                        <h4 className="font-black text-slate-800 text-lg">{user.name}</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-400">@{user.username}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black uppercase ${user.role === UserRole.ADMIN ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                            {user.role}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setResettingUserId(resettingUserId === user.id ? null : user.id)} className={`p-2 rounded-xl ${resettingUserId === user.id ? 'bg-emerald-100 text-emerald-600' : 'text-slate-300 hover:text-emerald-500'}`}><Key className="w-5 h-5" /></button>
-                      {user.id !== state.currentUser?.id && <button onClick={() => onRemoveUser(user.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>}
+                      <button 
+                        onClick={() => setResettingUserId(resettingUserId === user.id ? null : user.id)}
+                        className={`p-2 rounded-xl transition-all ${resettingUserId === user.id ? 'bg-emerald-100 text-emerald-600' : 'text-slate-300 hover:text-emerald-500 hover:bg-emerald-50'}`}
+                        title="ຣີເຊັດລະຫັດຜ່ານ"
+                      >
+                        <Key className="w-5 h-5" />
+                      </button>
+                      {user.id !== state.currentUser?.id && (
+                        <button 
+                          onClick={() => onRemoveUser(user.id)}
+                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                          title="ລຶບບັນຊີ"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
+
+                  {/* Password Reset Section */}
                   {resettingUserId === user.id && (
-                    <div className="mt-4 pt-4 border-t flex gap-2 animate-fadeIn">
-                      <input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="ລະຫັດຜ່ານໃໝ່..." className="flex-1 px-4 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" />
-                      <button onClick={() => handleResetPassword(user.id)} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold">ຢືນຢັນ</button>
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2 animate-fadeIn">
+                      <input 
+                        type="password" 
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                        placeholder="ລະຫັດຜ່ານໃໝ່..."
+                        className="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button 
+                        onClick={() => handleResetPassword(user.id)}
+                        className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all"
+                      >
+                        ຢືນຢັນ
+                      </button>
                     </div>
                   )}
                 </div>
@@ -186,18 +241,41 @@ const Admin: React.FC<AdminProps> = ({
 
         {activeTab === 'stores' && (
           <div className="space-y-6">
-            <div className="flex gap-4 items-end bg-slate-50 p-6 rounded-2xl">
+            <div className="flex gap-4 items-end bg-slate-50 p-6 rounded-2xl border border-slate-200">
               <div className="flex-1">
-                <label className="text-xs font-bold text-slate-500 mb-1 block">ຊື່ຮ້ານຄ້າໃໝ່</label>
-                <input type="text" value={newStoreName} onChange={(e) => setNewStoreName(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ຊື່ຮ້ານ..." />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ຊື່ຮ້ານຄ້າໃໝ່</label>
+                <input 
+                  type="text" 
+                  value={newStoreName}
+                  onChange={(e) => setNewStoreName(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  placeholder="ຊື່ຮ້ານ..."
+                />
               </div>
-              <button onClick={() => { if(newStoreName) { onAddStore({id: crypto.randomUUID(), name: newStoreName}); setNewStoreName(''); }}} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-100">ເພີ່ມ</button>
+              <button 
+                onClick={handleAddStore}
+                className="flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{TRANSLATIONS.add}</span>
+              </button>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {state.stores.map(store => (
-                <div key={store.id} className="p-4 border border-slate-100 rounded-2xl flex items-center justify-between bg-white hover:border-emerald-200">
-                  <span className="font-bold text-slate-800">{store.name}</span>
-                  <button onClick={() => onRemoveStore(store.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                <div key={store.id} className="p-4 border border-slate-100 rounded-2xl flex items-center justify-between bg-white hover:border-emerald-200 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50 transition-all">
+                      <StoreIcon className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-slate-800">{store.name}</span>
+                  </div>
+                  <button 
+                    onClick={() => onRemoveStore(store.id)}
+                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -206,65 +284,43 @@ const Admin: React.FC<AdminProps> = ({
 
         {activeTab === 'shifts' && (
           <div className="space-y-6">
-            <div className="flex gap-4 items-end bg-slate-50 p-6 rounded-2xl">
+            <div className="flex gap-4 items-end bg-slate-50 p-6 rounded-2xl border border-slate-200">
               <div className="flex-1">
-                <label className="text-xs font-bold text-slate-500 mb-1 block">ຊື່ປະເພດກະໃໝ່</label>
-                <input type="text" value={newShiftName} onChange={(e) => setNewShiftName(e.target.value)} className="w-full px-4 py-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" placeholder="ຕົວຢ່າງ: ກະຄ່ຳ..." />
+                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1.5 ml-1">ຊື່ປະເພດກະໃໝ່</label>
+                <input 
+                  type="text" 
+                  value={newShiftName}
+                  onChange={(e) => setNewShiftName(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  placeholder="ຕົວຢ່າງ: ກະບ່າຍ..."
+                />
               </div>
-              <button onClick={() => { if(newShiftName) { onAddShift({id: crypto.randomUUID(), name: newShiftName}); setNewShiftName(''); }}} className="px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-100">ເພີ່ມ</button>
+              <button 
+                onClick={handleAddShift}
+                className="flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{TRANSLATIONS.add}</span>
+              </button>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {state.shiftTypes.map(shift => (
-                <div key={shift.id} className="p-4 border border-slate-100 rounded-2xl flex items-center justify-between bg-white hover:border-emerald-200">
-                  <span className="font-bold text-slate-800">{shift.name}</span>
-                  <button onClick={() => onRemoveShift(shift.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 className="w-5 h-5" /></button>
+                <div key={shift.id} className="p-4 border border-slate-100 rounded-2xl flex items-center justify-between bg-white hover:border-emerald-200 transition-all group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-slate-50 rounded-xl text-slate-400 group-hover:text-emerald-500 group-hover:bg-emerald-50 transition-all">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <span className="font-bold text-slate-800">{shift.name}</span>
+                  </div>
+                  <button 
+                    onClick={() => onRemoveShift(shift.id)}
+                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'system' && (
-          <div className="space-y-6">
-            <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-600" />
-                ກວດສອບການເຊື່ອມຕໍ່ລະບົບ
-              </h3>
-              <p className="text-sm text-slate-500 mb-6">
-                ຖ້າທ່ານພົບຂໍ້ຜິດພາດ "Timed out", ໃຫ້ໃຊ້ປຸ່ມນີ້ເພື່ອທົດສອບວ່າ Internet ຂອງທ່ານສາມາດລົມກັບຖານຂໍ້ມູນໄດ້ຫຼືບໍ່.
-              </p>
-              
-              <div className="space-y-4">
-                <button 
-                  onClick={checkConnection}
-                  disabled={diagStatus === 'loading'}
-                  className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all flex items-center gap-2 disabled:opacity-50"
-                >
-                  {diagStatus === 'loading' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Activity className="w-5 h-5" />}
-                  ເລີ່ມການທົດສອບ
-                </button>
-
-                {diagStatus !== 'idle' && (
-                  <div className={`p-4 rounded-2xl flex items-start gap-3 animate-fadeIn ${
-                    diagStatus === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 
-                    diagStatus === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                  }`}>
-                    {diagStatus === 'success' ? <CheckCircle2 className="w-5 h-5 mt-0.5" /> : 
-                     diagStatus === 'error' ? <XCircle className="w-5 h-5 mt-0.5" /> : <Loader2 className="w-5 h-5 mt-0.5 animate-spin" />}
-                    <div>
-                      <p className="font-bold text-sm">ຜົນການທົດສອບ:</p>
-                      <p className="text-sm opacity-90">{diagMsg}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-               <p className="text-xs text-amber-700 leading-relaxed font-medium">
-                 💡 **ຄຳແນະນຳ:** ຖ້າຜົນການທົດສອບຂຶ້ນວ່າ "ສຳເລັດ" ແຕ່ທ່ານຍັງເຂົ້າເວັບບໍ່ໄດ້, ອາດເປັນເພາະ DNS ຂອງ Domain ຍັງບໍ່ທັນສົມບູນ. ແຕ່ຖ້າຂຶ້ນວ່າ "ການເຊື່ອມຕໍ່ມີບັນຫາ", ອາດເກີດຈາກ Internet ທີ່ທ່ານກຳລັງໃຊ້ຢູ່ມີການບລັອກ ຫຼື ສັນຍານບໍ່ສະຖຽນ.
-               </p>
             </div>
           </div>
         )}
