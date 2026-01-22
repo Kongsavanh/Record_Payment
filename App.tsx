@@ -25,7 +25,8 @@ import {
   LogOut,
   Plus,
   Loader2,
-  RefreshCcw
+  RefreshCcw,
+  AlertTriangle
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -47,7 +48,7 @@ const App: React.FC = () => {
     }
     
     try {
-      // Set a timeout for the fetch operation
+      // Set a timeout for the fetch operation to avoid infinite loading
       const fetchPromise = Promise.all([
         supabase.from('users').select('*'),
         supabase.from('stores').select('*'),
@@ -56,7 +57,7 @@ const App: React.FC = () => {
       ]);
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ")), 15000)
+        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ (Timed out)")), 15000)
       );
 
       const [usersRes, storesRes, shiftsRes, entriesRes] = await Promise.race([
@@ -66,6 +67,8 @@ const App: React.FC = () => {
 
       if (usersRes.error) throw usersRes.error;
       if (storesRes.error) throw storesRes.error;
+      if (shiftsRes.error) throw shiftsRes.error;
+      if (entriesRes.error) throw entriesRes.error;
 
       setState(prev => ({
         ...prev,
@@ -76,9 +79,9 @@ const App: React.FC = () => {
       }));
     } catch (err: any) {
       console.error('Error fetching data:', err);
-      setError(err.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຂໍ້ມູນ");
+      setError(err.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຂໍ້ມູນ. ກະລຸນາກວດສອບການຕັ້ງຄ່າ API Key.");
     } finally {
-      if (showLoader) setIsLoading(false);
+      setIsLoading(false);
     }
   }, []);
 
@@ -130,7 +133,8 @@ const App: React.FC = () => {
 
   const addEntry = async (entry: Entry) => {
     const { expenses, ...entryData } = entry;
-    const { data } = await supabase.from('entries').insert([entryData]).select();
+    const { data, error: entryErr } = await supabase.from('entries').insert([entryData]).select();
+    if (entryErr) throw entryErr;
     
     if (data && expenses.length > 0) {
       const entryId = data[0].id;
@@ -150,9 +154,15 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-        <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-bold">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="relative">
+          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="w-2 h-2 bg-emerald-600 rounded-full animate-ping"></div>
+          </div>
+        </div>
+        <p className="mt-4 text-slate-500 font-bold">ກຳລັງໂຫຼດຂໍ້ມູນຖານຂໍ້ມູນ...</p>
+        <p className="text-xs text-slate-400 mt-2">ຖ້າໜ້າຈໍຄ້າງດົນເກີນໄປ, ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ອິນເຕີເນັດ</p>
       </div>
     );
   }
@@ -160,18 +170,24 @@ const App: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-sm">
+        <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md">
           <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <RefreshCcw className="w-8 h-8 text-red-500" />
+            <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ໄດ້</h2>
-          <p className="text-slate-500 text-sm mb-6">{error}</p>
-          <button 
-            onClick={() => fetchInitialData(true)}
-            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all"
-          >
-            ລອງໃໝ່ອີກຄັ້ງ
-          </button>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ຖານຂໍ້ມູນໄດ້</h2>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed">
+            {error.includes("VITE_SUPABASE_URL") ? "ທ່ານຍັງບໍ່ທັນໄດ້ຕັ້ງຄ່າ API Keys ໃນ Vercel Settings." : error}
+          </p>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => fetchInitialData(true)}
+              className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              ລອງໃໝ່ອີກຄັ້ງ
+            </button>
+            <p className="text-[10px] text-slate-400">ກະລຸນາກວດສອບ Environment Variables ຂອງທ່ານ</p>
+          </div>
         </div>
       </div>
     );

@@ -1,11 +1,19 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Get environment variables from Vite's import.meta.env
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
+// Fix: Use process.env for environment variables to resolve TypeScript errors with import.meta.env
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
+// Check if variables are missing and log a clear error
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase credentials are missing. Check your .env file or Vercel environment variables.");
+  console.error(
+    "ຄວາມຜິດພາດ: ບໍ່ພົບ Supabase Keys! \n" +
+    "ກະລຸນາກວດສອບການຕັ້ງຄ່າ Environment Variables ໃນ Vercel ໃຫ້ຄົບຖ້ວນ."
+  );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Export the client (it will handle empty strings gracefully by throwing an error on the first call instead of crashing the load)
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);
