@@ -18,7 +18,8 @@ import {
   Wallet,
   ArrowRightLeft,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  Coins
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 import * as XLSX from 'xlsx';
@@ -86,7 +87,7 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
       'ຮ້ານຄ້າ': getStoreName(e.store_id),
       'ພະນັກງານ': getUserName(e.user_id),
       'ປະເພດກະ': getShiftName(e.shift_type_id),
-      'ລາຍໄດ້ລວມ': e.total_revenue,
+      'ລາຍໄດ້ລວມໃນລະບົບ': e.total_revenue,
       'ຍອດໂອນ': e.transfer_amount,
       'ເງິນສົດໃນລິ້ນຊັກ': e.actual_cash_in_drawer,
       'ຄ່າໃຊ້ຈ່າຍ': e.total_expenses,
@@ -236,7 +237,7 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
           </div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
             <div className="bg-blue-100 p-3 rounded-xl">
-               <Search className="w-6 h-6 text-blue-600" />
+               <ArrowRightLeft className="w-6 h-6 text-blue-600" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">{TRANSLATIONS.transferAmount}</p>
@@ -254,7 +255,7 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
           </div>
           <div className="bg-emerald-600 p-5 rounded-2xl shadow-lg flex items-center gap-4 text-white">
             <div className="bg-emerald-500/50 p-3 rounded-xl">
-               <Download className="w-6 h-6 text-white" />
+               <Wallet className="w-6 h-6 text-white" />
             </div>
             <div>
               <p className="text-xs font-bold text-emerald-100 uppercase">{TRANSLATIONS.finalBalance}</p>
@@ -263,38 +264,47 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-auto">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.date}</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.store}</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.staff}</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.status}</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.finalBalance}</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider no-print"></th>
+                  <th className="px-4 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.date}</th>
+                  <th className="px-4 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.store}</th>
+                  <th className="px-4 py-4 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.staff}</th>
+                  <th className="px-4 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.totalRevenue}</th>
+                  <th className="px-4 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.transferAmount}</th>
+                  <th className="px-4 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.actualCashInDrawer}</th>
+                  <th className="px-4 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.expenses}</th>
+                  <th className="px-4 py-4 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider font-black">{TRANSLATIONS.finalBalance}</th>
+                  <th className="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.status}</th>
+                  <th className="px-4 py-4 text-center text-[10px] font-bold text-slate-500 uppercase tracking-wider no-print"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filteredEntries.map((entry) => (
                   <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">{formatDate(entry.date)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <ShoppingBag className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">{getStoreName(entry.store_id)}</span>
+                    <td className="px-4 py-4 whitespace-nowrap text-[12px] text-slate-700 font-medium">{formatDate(entry.date)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <ShoppingBag className="w-3 h-3 text-slate-400" />
+                        <span className="text-[12px] text-slate-600">{getStoreName(entry.store_id)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">{getUserName(entry.user_id)}</span>
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{getShiftName(entry.shift_type_id)}</span>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3 h-3 text-slate-400" />
+                        <span className="text-[12px] text-slate-600">{getUserName(entry.user_id)}</span>
+                        <span className="text-[9px] bg-slate-100 text-slate-500 px-1 py-0.5 rounded uppercase font-bold">{getShiftName(entry.shift_type_id)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-[12px] text-slate-600 font-medium">{formatCurrency(entry.total_revenue)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-[12px] text-slate-600 font-medium">{formatCurrency(entry.transfer_amount)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-[12px] text-slate-600 font-medium">{formatCurrency(entry.actual_cash_in_drawer)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-[12px] text-red-500 font-medium">{formatCurrency(entry.total_expenses)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-right text-[13px] font-black text-slate-900">{formatCurrency(entry.final_balance)}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-center">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
                         entry.status === EntryStatus.VERIFIED 
                         ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' 
                         : 'bg-amber-100 text-amber-600 border border-amber-200'
@@ -303,13 +313,12 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
                         {entry.status === EntryStatus.VERIFIED ? TRANSLATIONS.verified : TRANSLATIONS.pending}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-slate-900">{formatCurrency(entry.final_balance)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center no-print">
+                    <td className="px-4 py-4 whitespace-nowrap text-center no-print">
                       <button 
                         onClick={() => handleDelete(entry.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                        className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -317,6 +326,14 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
               </tbody>
             </table>
           </div>
+          {filteredEntries.length === 0 && (
+            <div className="text-center py-20 text-slate-400">
+               <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-slate-200">
+                 <Search className="w-6 h-6 text-slate-200" />
+               </div>
+               <p className="text-sm font-bold uppercase tracking-widest">ບໍ່ພົບຂໍ້ມູນໃນການຄົ້ນຫາ</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
