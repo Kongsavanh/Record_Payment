@@ -22,7 +22,8 @@ import {
   ShieldCheck,
   ClipboardList,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 
 interface AdminProps {
@@ -49,6 +50,7 @@ const Admin: React.FC<AdminProps> = ({
   onVerifyEntry
 }) => {
   const [activeTab, setActiveTab] = useState<'review' | 'users' | 'stores' | 'shifts'>('review');
+  const [confirmingEntryId, setConfirmingEntryId] = useState<string | null>(null);
   
   const [newUserName, setNewUserName] = useState('');
   const [newUserUsername, setNewUserUsername] = useState('');
@@ -69,6 +71,7 @@ const Admin: React.FC<AdminProps> = ({
     if (!onVerifyEntry) return;
     try {
       await onVerifyEntry(id);
+      setConfirmingEntryId(null);
       alert('ຢືນຢັນຂໍ້ມູນສຳເລັດແລ້ວ');
     } catch (error) {
       alert('ເກີດຂໍ້ຜິດພາດໃນການຢືນຢັນ');
@@ -194,13 +197,32 @@ const Admin: React.FC<AdminProps> = ({
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => handleVerify(entry.id)}
-                        className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95"
-                      >
-                        <CheckCircle2 className="w-5 h-5" />
-                        <span>{T.approve}</span>
-                      </button>
+                      {confirmingEntryId === entry.id ? (
+                        <div className="flex items-center gap-2 animate-fadeIn">
+                          <button 
+                            onClick={() => setConfirmingEntryId(null)}
+                            className="p-2 text-slate-400 hover:bg-slate-200 rounded-xl transition-all"
+                            title={T.cancel}
+                          >
+                            <X className="w-6 h-6" />
+                          </button>
+                          <button 
+                            onClick={() => handleVerify(entry.id)}
+                            className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+                          >
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span>ຢືນຢັນການກວດສອບ</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={() => setConfirmingEntryId(entry.id)}
+                          className="p-4 bg-emerald-50 text-emerald-600 rounded-full hover:bg-emerald-100 transition-all shadow-sm group"
+                          title="ກວດສອບລາຍການນີ້"
+                        >
+                          <CheckCircle2 className="w-8 h-8 group-hover:scale-110 transition-transform" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   
