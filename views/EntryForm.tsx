@@ -38,10 +38,22 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
   const totalExpenses = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses]);
   const finalBalance = useMemo(() => actualCashInDrawer - totalExpenses, [actualCashInDrawer, totalExpenses]);
 
+  // Safe UUID Generator for environments without crypto.randomUUID
+  const generateId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
+  };
+
   const handleAddExpense = () => {
     if (newExpAmount <= 0 || !newExpDesc) return;
     const exp: Expense = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       amount: newExpAmount,
       description: newExpDesc,
       image_url: newExpImg || undefined,
@@ -59,6 +71,11 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (limit to 1MB for base64 storage in text column)
+      if (file.size > 1024 * 1024) {
+        alert("ຮູບພາບມີຂະໜາດໃຫຍ່ເກີນໄປ (ກະລຸນາເລືອກຮູບທີ່ນ້ອຍກວ່າ 1MB)");
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setNewExpImg(reader.result as string);
@@ -77,7 +94,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
 
     try {
       setIsSaving(true);
-      const entryId = crypto.randomUUID();
+      const entryId = generateId();
       const newEntry: Entry = {
         id: entryId,
         date,
@@ -100,9 +117,9 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
       
       alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ. ກະລຸນາລໍຖ້າໃຫ້ Admin ກວດສອບ.');
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving entry:', error);
-      alert('ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກຂໍ້ມູນ');
+      alert(`ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກຂໍ້ມູນ: ${error.message || 'ບໍ່ຮູ້ສາເຫດ'}`);
     } finally {
       setIsSaving(false);
     }

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   AppState, 
@@ -43,7 +44,6 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
   const fetchInitialData = useCallback(async (showLoader = false) => {
-    // Safe environment variable check
     const getEnv = (name: string): string | undefined => {
       try {
         const metaEnv = (import.meta as any).env;
@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
     const supabaseUrl = getEnv('VITE_SUPABASE_URL');
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      setError("ກະລຸນາຕັ້ງຄ່າ VITE_SUPABASE_URL ໃນ Vercel Settings ຫຼື Environment Variables");
+      setError("ກະລຸນາຕັ້ງຄ່າ VITE_SUPABASE_URL ໃນ Environment Variables");
       setIsLoading(false);
       return;
     }
@@ -74,7 +74,7 @@ const App: React.FC = () => {
       ]);
 
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ (Timed out)")), 15000)
+        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ")), 15000)
       );
 
       const [usersRes, storesRes, shiftsRes, entriesRes] = await Promise.race([
@@ -96,7 +96,7 @@ const App: React.FC = () => {
       }));
     } catch (err: any) {
       console.error('Error fetching data:', err);
-      setError(err.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຂໍ້ມູນ. ກະລຸນາກວດສອບການຕັ້ງຄ່າ API Key.");
+      setError(err.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຂໍ້ມູນ.");
     } finally {
       setIsLoading(false);
     }
@@ -136,7 +136,8 @@ const App: React.FC = () => {
       .update({ name: updatedUser.name, password: updatedUser.password })
       .eq('id', updatedUser.id);
     
-    if (!error && state.currentUser?.id === updatedUser.id) {
+    if (error) throw error;
+    if (state.currentUser?.id === updatedUser.id) {
       setState(prev => ({ ...prev, currentUser: updatedUser }));
     }
   };
@@ -151,39 +152,77 @@ const App: React.FC = () => {
     await fetchInitialData(false);
   };
 
-  const addUser = async (user: User) => { await supabase.from('users').insert([user]); };
-  const removeUser = async (id: string) => { await supabase.from('users').delete().eq('id', id); };
-  const addStore = async (store: Store) => { await supabase.from('stores').insert([store]); };
-  const removeStore = async (id: string) => { await supabase.from('stores').delete().eq('id', id); };
-  const addShiftType = async (shift: ShiftType) => { await supabase.from('shift_types').insert([shift]); };
-  const removeShiftType = async (id: string) => { await supabase.from('shift_types').delete().eq('id', id); };
+  const addUser = async (user: User) => { 
+    const { error } = await supabase.from('users').insert([user]); 
+    if (error) throw error;
+  };
+  
+  const removeUser = async (id: string) => { 
+    const { error } = await supabase.from('users').delete().eq('id', id); 
+    if (error) throw error;
+  };
+  
+  const addStore = async (store: Store) => { 
+    const { error } = await supabase.from('stores').insert([store]); 
+    if (error) throw error;
+  };
+  
+  const removeStore = async (id: string) => { 
+    const { error } = await supabase.from('stores').delete().eq('id', id); 
+    if (error) throw error;
+  };
+  
+  const addShiftType = async (shift: ShiftType) => { 
+    const { error } = await supabase.from('shift_types').insert([shift]); 
+    if (error) throw error;
+  };
+  
+  const removeShiftType = async (id: string) => { 
+    const { error } = await supabase.from('shift_types').delete().eq('id', id); 
+    if (error) throw error;
+  };
 
   const addEntry = async (entry: Entry) => {
     const { expenses, ...entryData } = entry;
-    const { data, error: entryErr } = await supabase.from('entries').insert([entryData]).select();
-    if (entryErr) throw entryErr;
     
-    if (data && expenses.length > 0) {
-      const entryId = data[0].id;
+    // Attempt to insert entry
+    const { data: insertedEntries, error: entryErr } = await supabase
+      .from('entries')
+      .insert([entryData])
+      .select();
+      
+    if (entryErr) {
+      console.error('Supabase Entry Insert Error:', entryErr);
+      throw new Error(`Entry Error: ${entryErr.message} (${entryErr.code})`);
+    }
+    
+    if (insertedEntries && insertedEntries.length > 0 && expenses.length > 0) {
+      const entryId = insertedEntries[0].id;
       const expensesWithId = expenses.map(ex => ({ 
         entry_id: entryId, 
         amount: ex.amount, 
         description: ex.description, 
         image_url: ex.image_url 
       }));
-      await supabase.from('expenses').insert(expensesWithId);
+      
+      const { error: expErr } = await supabase.from('expenses').insert(expensesWithId);
+      if (expErr) {
+        console.error('Supabase Expenses Insert Error:', expErr);
+        throw new Error(`Expenses Error: ${expErr.message} (${expErr.code})`);
+      }
     }
   };
 
   const deleteEntry = async (id: string) => {
-    await supabase.from('entries').delete().eq('id', id);
+    const { error } = await supabase.from('entries').delete().eq('id', id);
+    if (error) throw error;
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
         <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-bold tracking-tight">ກຳລັງໂຫຼດຂໍ້ມູນຖານຂໍ້ມູນ...</p>
+        <p className="text-slate-500 font-bold tracking-tight">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
       </div>
     );
   }
@@ -196,9 +235,7 @@ const App: React.FC = () => {
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ໄດ້</h2>
-          <p className="text-slate-500 text-sm mb-6 leading-relaxed px-2">
-            {error}
-          </p>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed px-2">{error}</p>
           <button 
             onClick={() => fetchInitialData(true)}
             className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
