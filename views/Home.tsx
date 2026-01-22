@@ -12,7 +12,8 @@ import {
   Clock,
   LayoutGrid,
   ChevronRight,
-  Lock
+  Lock,
+  CalendarDays
 } from 'lucide-react';
 
 interface HomeProps {
@@ -23,15 +24,32 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
   const isStaff = state.currentUser?.role === UserRole.STAFF;
 
+  // Get current Month and Year for filtering
+  const currentMonthYear = useMemo(() => {
+    const now = new Date();
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      label: now.toLocaleDateString('lo-LA', { month: 'long', year: 'numeric' })
+    };
+  }, []);
+
   const filteredEntries = useMemo(() => {
+    let entries = state.entries;
     if (isStaff) {
-      return state.entries.filter(e => e.user_id === state.currentUser?.id);
+      entries = entries.filter(e => e.user_id === state.currentUser?.id);
     }
-    return state.entries;
+    return entries;
   }, [state.entries, isStaff, state.currentUser]);
 
+  // Filter entries to only current month for the dashboard summary
+  const currentMonthEntries = useMemo(() => {
+    const prefix = `${currentMonthYear.year}-${String(currentMonthYear.month).padStart(2, '0')}`;
+    return filteredEntries.filter(e => e.date.startsWith(prefix));
+  }, [filteredEntries, currentMonthYear]);
+
   const totals = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => ({
+    return currentMonthEntries.reduce((acc, curr) => ({
       revenue: acc.revenue + curr.total_revenue,
       expenses: acc.expenses + curr.total_expenses,
       transfers: acc.transfers + curr.transfer_amount,
@@ -39,21 +57,21 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
       balance: acc.balance + curr.final_balance,
       diff: acc.diff + curr.difference
     }), { revenue: 0, expenses: 0, transfers: 0, cash: 0, balance: 0, diff: 0 });
-  }, [filteredEntries]);
+  }, [currentMonthEntries]);
 
   const storeStats = useMemo(() => {
     const stats: Record<string, { name: string, balance: number, revenue: number }> = {};
     state.stores.forEach(s => {
       stats[s.id] = { name: s.name, balance: 0, revenue: 0 };
     });
-    filteredEntries.forEach(e => {
+    currentMonthEntries.forEach(e => {
       if (stats[e.store_id]) {
         stats[e.store_id].balance += e.final_balance;
         stats[e.store_id].revenue += e.total_revenue;
       }
     });
     return Object.values(stats).sort((a, b) => b.balance - a.balance);
-  }, [filteredEntries, state.stores]);
+  }, [currentMonthEntries, state.stores]);
 
   const recentEntries = useMemo(() => {
     return [...filteredEntries].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
@@ -64,9 +82,15 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
       <div className="relative overflow-hidden bg-emerald-600 rounded-3xl p-8 text-white shadow-xl shadow-emerald-100">
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-emerald-100 font-medium">
-              {isStaff ? 'ສະຫຼຸບຜົນງານສ່ວນຕົວຂອງທ່ານ' : T.overallSummary}
-            </p>
+            <div className="flex flex-col">
+              <p className="text-emerald-100 font-medium">
+                {isStaff ? 'ສະຫຼຸບຜົນງານສ່ວນຕົວ' : T.overallSummary}
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-200 mt-0.5">
+                <CalendarDays className="w-3 h-3" />
+                <span>ປະຈຳເດືອນ: {currentMonthYear.label}</span>
+              </div>
+            </div>
             {isStaff && (
               <div className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-bold">
                 <Lock className="w-3 h-3" />
@@ -74,7 +98,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
               </div>
             )}
           </div>
-          <h2 className="text-4xl font-black mb-6">{formatCurrency(totals.balance)} <span className="text-xl font-normal opacity-80">{T.currency}</span></h2>
+          <h2 className="text-4xl font-black mb-6 mt-2">{formatCurrency(totals.balance)} <span className="text-xl font-normal opacity-80">{T.currency}</span></h2>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
@@ -147,7 +171,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
               </p>
             </div>
           </div>
-          <p className="text-xs text-slate-400">ສ່ວນຕ່າງສະສົມ{isStaff ? 'ສ່ວນຕົວ' : 'ທັງໝົດ'}</p>
+          <p className="text-xs text-slate-400">ສ່ວນຕ່າງສະສົມ (ເດືອນນີ້)</p>
         </div>
       </div>
 
@@ -156,7 +180,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-emerald-600" />
-              {T.performanceByStore}
+              ຜົນງານແຍກຕາມຮ້ານ (ເດືອນນີ້)
             </h3>
           </div>
           <div className="space-y-4">
@@ -177,6 +201,9 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
                 </div>
               </div>
             ))}
+            {storeStats.length === 0 && (
+              <div className="text-center py-6 text-slate-400 text-sm italic">ບໍ່ມີຂໍ້ມູນໃນເດືອນນີ້</div>
+            )}
           </div>
         </section>
 
