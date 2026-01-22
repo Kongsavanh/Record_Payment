@@ -148,7 +148,12 @@ const App: React.FC = () => {
       .update({ status: EntryStatus.VERIFIED })
       .eq('id', id);
     
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST204') {
+        throw new Error("ບໍ່ພົບ Column 'status' ໃນ Table 'entries'. ກະລຸນາເພີ່ມ Column ນີ້ໃນ Supabase SQL Editor: ALTER TABLE entries ADD COLUMN status TEXT DEFAULT 'PENDING';");
+      }
+      throw error;
+    }
     await fetchInitialData(false);
   };
 
@@ -193,23 +198,45 @@ const App: React.FC = () => {
       
     if (entryErr) {
       console.error('Supabase Entry Insert Error:', entryErr);
+      if (entryErr.code === 'PGRST204') {
+        // If status column is missing, try inserting without it to allow data saving,
+        // but warn the user they need to update their schema for verification features to work.
+        const { status, ...entryWithoutStatus } = entryData;
+        const { data: retryData, error: retryErr } = await supabase
+          .from('entries')
+          .insert([entryWithoutStatus])
+          .select();
+          
+        if (retryErr) throw new Error(`Entry Error: ${retryErr.message} (${retryErr.code})`);
+        
+        // If retry succeeded, notify that the schema needs updating
+        console.warn("Inserted entry without 'status' column. Please run the SQL migration.");
+        
+        if (retryData && retryData.length > 0 && expenses.length > 0) {
+           await insertExpenses(retryData[0].id, expenses);
+        }
+        return;
+      }
       throw new Error(`Entry Error: ${entryErr.message} (${entryErr.code})`);
     }
     
     if (insertedEntries && insertedEntries.length > 0 && expenses.length > 0) {
-      const entryId = insertedEntries[0].id;
-      const expensesWithId = expenses.map(ex => ({ 
-        entry_id: entryId, 
-        amount: ex.amount, 
-        description: ex.description, 
-        image_url: ex.image_url 
-      }));
-      
-      const { error: expErr } = await supabase.from('expenses').insert(expensesWithId);
-      if (expErr) {
-        console.error('Supabase Expenses Insert Error:', expErr);
-        throw new Error(`Expenses Error: ${expErr.message} (${expErr.code})`);
-      }
+      await insertExpenses(insertedEntries[0].id, expenses);
+    }
+  };
+
+  const insertExpenses = async (entryId: string, expenses: any[]) => {
+    const expensesWithId = expenses.map(ex => ({ 
+      entry_id: entryId, 
+      amount: ex.amount, 
+      description: ex.description, 
+      image_url: ex.image_url 
+    }));
+    
+    const { error: expErr } = await supabase.from('expenses').insert(expensesWithId);
+    if (expErr) {
+      console.error('Supabase Expenses Insert Error:', expErr);
+      throw new Error(`Expenses Error: ${expErr.message} (${expErr.code})`);
     }
   };
 
