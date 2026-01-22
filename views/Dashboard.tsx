@@ -5,8 +5,8 @@ import {
   Entry, 
   Expense, 
   Store, 
-  ShiftType 
-  // Fix: Remove TRANSLATIONS from types import
+  ShiftType,
+  EntryStatus
 } from '../types';
 import { TRANSLATIONS as T } from '../constants';
 import { getTodayStr, formatCurrency } from '../utils';
@@ -74,6 +74,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onAddEntry }) => {
     }
 
     // Fix: Map property names to match the snake_case fields in Entry interface
+    // Added missing 'status' field to satisfy Entry interface requirement
     const newEntry: Entry = {
       id: crypto.randomUUID(),
       date,
@@ -88,6 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state, onAddEntry }) => {
       expenses,
       total_expenses: totalExpenses,
       final_balance: finalBalance,
+      status: EntryStatus.PENDING,
       created_at: new Date().toISOString()
     };
     onAddEntry(newEntry);

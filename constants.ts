@@ -65,4 +65,10 @@ export const TRANSLATIONS = {
   overallSummary: 'ສະຫຼຸບຜົນລວມທັງໝົດ',
   recentEntries: 'ລາຍການຫຼ້າສຸດ',
   performanceByStore: 'ຜົນງານແຍກຕາມຮ້ານ',
+  verification: 'ກວດສອບຂໍ້ມູນ',
+  status: 'ສະຖານະ',
+  pending: 'ລໍຖ້າກວດສອບ',
+  verified: 'ກວດສອບແລ້ວ',
+  approve: 'ຢືນຢັນຄວາມຖືກຕ້ອງ',
+  waitReview: 'ລໍຖ້າ Admin ກວດສອບ'
 };

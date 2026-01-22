@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { AppState, UserRole } from '../types';
+import { AppState, UserRole, EntryStatus } from '../types';
 import { TRANSLATIONS as T } from '../constants';
 import { formatCurrency, formatDate } from '../utils';
 import { 
@@ -13,7 +13,9 @@ import {
   LayoutGrid,
   ChevronRight,
   Lock,
-  CalendarDays
+  CalendarDays,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 interface HomeProps {
@@ -24,7 +26,6 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
   const isStaff = state.currentUser?.role === UserRole.STAFF;
 
-  // Get current Month and Year for filtering
   const currentMonthYear = useMemo(() => {
     const now = new Date();
     return {
@@ -42,14 +43,15 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
     return entries;
   }, [state.entries, isStaff, state.currentUser]);
 
-  // Filter entries to only current month for the dashboard summary
   const currentMonthEntries = useMemo(() => {
     const prefix = `${currentMonthYear.year}-${String(currentMonthYear.month).padStart(2, '0')}`;
     return filteredEntries.filter(e => e.date.startsWith(prefix));
   }, [filteredEntries, currentMonthYear]);
 
-  const totals = useMemo(() => {
-    return currentMonthEntries.reduce((acc, curr) => ({
+  // Totals only for VERIFIED entries
+  const verifiedTotals = useMemo(() => {
+    const verified = currentMonthEntries.filter(e => e.status === EntryStatus.VERIFIED);
+    return verified.reduce((acc, curr) => ({
       revenue: acc.revenue + curr.total_revenue,
       expenses: acc.expenses + curr.total_expenses,
       transfers: acc.transfers + curr.transfer_amount,
@@ -59,17 +61,28 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
     }), { revenue: 0, expenses: 0, transfers: 0, cash: 0, balance: 0, diff: 0 });
   }, [currentMonthEntries]);
 
+  // Pending entries summary
+  const pendingSummary = useMemo(() => {
+    const pending = currentMonthEntries.filter(e => e.status === EntryStatus.PENDING);
+    return {
+      count: pending.length,
+      amount: pending.reduce((sum, e) => sum + e.final_balance, 0)
+    };
+  }, [currentMonthEntries]);
+
   const storeStats = useMemo(() => {
     const stats: Record<string, { name: string, balance: number, revenue: number }> = {};
     state.stores.forEach(s => {
       stats[s.id] = { name: s.name, balance: 0, revenue: 0 };
     });
-    currentMonthEntries.forEach(e => {
-      if (stats[e.store_id]) {
-        stats[e.store_id].balance += e.final_balance;
-        stats[e.store_id].revenue += e.total_revenue;
-      }
-    });
+    currentMonthEntries
+      .filter(e => e.status === EntryStatus.VERIFIED)
+      .forEach(e => {
+        if (stats[e.store_id]) {
+          stats[e.store_id].balance += e.final_balance;
+          stats[e.store_id].revenue += e.total_revenue;
+        }
+      });
     return Object.values(stats).sort((a, b) => b.balance - a.balance);
   }, [currentMonthEntries, state.stores]);
 
@@ -79,13 +92,17 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {/* Dashboard Card - Shows ONLY Verified Totals */}
       <div className="relative overflow-hidden bg-emerald-600 rounded-3xl p-8 text-white shadow-xl shadow-emerald-100">
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-1">
             <div className="flex flex-col">
-              <p className="text-emerald-100 font-medium">
-                {isStaff ? 'ສະຫຼຸບຜົນງານສ່ວນຕົວ' : T.overallSummary}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-emerald-100 font-medium">
+                  {isStaff ? 'ຜົນງານທີ່ກວດສອບແລ້ວ' : 'ຍອດລວມທີ່ກວດສອບແລ້ວ'}
+                </p>
+                <ShieldCheck className="w-4 h-4 text-emerald-200" />
+              </div>
               <div className="flex items-center gap-1.5 text-xs text-emerald-200 mt-0.5">
                 <CalendarDays className="w-3 h-3" />
                 <span>ປະຈຳເດືອນ: {currentMonthYear.label}</span>
@@ -98,7 +115,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
               </div>
             )}
           </div>
-          <h2 className="text-4xl font-black mb-6 mt-2">{formatCurrency(totals.balance)} <span className="text-xl font-normal opacity-80">{T.currency}</span></h2>
+          <h2 className="text-4xl font-black mb-6 mt-2">{formatCurrency(verifiedTotals.balance)} <span className="text-xl font-normal opacity-80">{T.currency}</span></h2>
           
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
@@ -106,14 +123,14 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
                 <TrendingUp className="w-3 h-3" />
                 <span>{T.totalRevenue}</span>
               </div>
-              <p className="text-lg font-bold">{formatCurrency(totals.revenue)}</p>
+              <p className="text-lg font-bold">{formatCurrency(verifiedTotals.revenue)}</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
               <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase mb-1">
                 <TrendingDown className="w-3 h-3" />
                 <span>{T.expenses}</span>
               </div>
-              <p className="text-lg font-bold">{formatCurrency(totals.expenses)}</p>
+              <p className="text-lg font-bold">{formatCurrency(verifiedTotals.expenses)}</p>
             </div>
           </div>
         </div>
@@ -121,6 +138,27 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-emerald-500 rounded-full opacity-50 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-48 h-48 bg-emerald-700 rounded-full opacity-30 blur-2xl"></div>
       </div>
+
+      {/* Pending Banner */}
+      {pendingSummary.count > 0 && (
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-pulse">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-2 rounded-xl text-amber-600">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-amber-800">ມີ {pendingSummary.count} ລາຍການລໍຖ້າການກວດສອບ</p>
+              <p className="text-xs text-amber-600">ມູນຄ່າລວມ: {formatCurrency(pendingSummary.amount)} {T.currency}</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => onNavigate('reports')}
+            className="text-xs font-bold text-amber-700 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-amber-200"
+          >
+            ກວດສອບເບິ່ງ
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -130,13 +168,13 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">{T.transferAmount}</p>
-              <p className="text-xl font-bold text-slate-800">{formatCurrency(totals.transfers)}</p>
+              <p className="text-xl font-bold text-slate-800">{formatCurrency(verifiedTotals.transfers)}</p>
             </div>
           </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div 
               className="h-full bg-blue-500" 
-              style={{ width: `${totals.revenue > 0 ? (totals.transfers / totals.revenue) * 100 : 0}%` }}
+              style={{ width: `${verifiedTotals.revenue > 0 ? (verifiedTotals.transfers / verifiedTotals.revenue) * 100 : 0}%` }}
             ></div>
           </div>
         </div>
@@ -148,30 +186,30 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">{T.actualCashInDrawer}</p>
-              <p className="text-xl font-bold text-slate-800">{formatCurrency(totals.cash)}</p>
+              <p className="text-xl font-bold text-slate-800">{formatCurrency(verifiedTotals.cash)}</p>
             </div>
           </div>
           <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div 
               className="h-full bg-amber-500" 
-              style={{ width: `${totals.cash > 0 ? (totals.cash / (totals.cash + Math.abs(totals.diff))) * 100 : 0}%` }}
+              style={{ width: `${verifiedTotals.cash > 0 ? (verifiedTotals.cash / (verifiedTotals.cash + Math.abs(verifiedTotals.diff))) * 100 : 0}%` }}
             ></div>
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <div className="flex items-center gap-4 mb-4">
-            <div className={`p-3 rounded-xl ${totals.diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+            <div className={`p-3 rounded-xl ${verifiedTotals.diff >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
               <LayoutGrid className="w-6 h-6" />
             </div>
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase">{T.difference}</p>
-              <p className={`text-xl font-bold ${totals.diff < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                {formatCurrency(totals.diff)}
+              <p className={`text-xl font-bold ${verifiedTotals.diff < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                {formatCurrency(verifiedTotals.diff)}
               </p>
             </div>
           </div>
-          <p className="text-xs text-slate-400">ສ່ວນຕ່າງສະສົມ (ເດືອນນີ້)</p>
+          <p className="text-xs text-slate-400">ສ່ວນຕ່າງສະສົມ (ທີ່ກວດແລ້ວ)</p>
         </div>
       </div>
 
@@ -180,7 +218,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <ShoppingBag className="w-5 h-5 text-emerald-600" />
-              ຜົນງານແຍກຕາມຮ້ານ (ເດືອນນີ້)
+              ຜົນງານແຍກຕາມຮ້ານ (ທີ່ກວດແລ້ວ)
             </h3>
           </div>
           <div className="space-y-4">
@@ -193,7 +231,7 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-emerald-500 transition-all duration-1000" 
-                    style={{ width: `${totals.revenue > 0 ? (store.revenue / totals.revenue) * 100 : 0}%` }}
+                    style={{ width: `${verifiedTotals.revenue > 0 ? (store.revenue / verifiedTotals.revenue) * 100 : 0}%` }}
                   ></div>
                 </div>
                 <div className="flex justify-between mt-1">
@@ -225,8 +263,8 @@ const Home: React.FC<HomeProps> = ({ state, onNavigate }) => {
             {recentEntries.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-50 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="bg-slate-100 p-2 rounded-lg text-slate-400">
-                    <LayoutGrid className="w-4 h-4" />
+                  <div className={`p-2 rounded-lg ${entry.status === EntryStatus.VERIFIED ? 'bg-emerald-50 text-emerald-400' : 'bg-amber-50 text-amber-400'}`}>
+                    {entry.status === EntryStatus.VERIFIED ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800">{state.stores.find(s => s.id === entry.store_id)?.name}</p>

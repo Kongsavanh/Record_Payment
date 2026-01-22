@@ -5,7 +5,8 @@ import {
   UserRole, 
   Entry, 
   Store, 
-  ShiftType 
+  ShiftType,
+  EntryStatus
 } from './types';
 import { 
   TRANSLATIONS 
@@ -42,10 +43,19 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
   const fetchInitialData = useCallback(async (showLoader = false) => {
-    // Check if Supabase is configured before fetching
-    const env = (import.meta as any).env;
-    if (!env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL.includes('placeholder')) {
-      setError("ກະລຸນາຕັ້ງຄ່າ VITE_SUPABASE_URL ໃນ Vercel Settings");
+    // Safe environment variable check
+    const getEnv = (name: string): string | undefined => {
+      try {
+        const metaEnv = (import.meta as any).env;
+        if (metaEnv && metaEnv[name]) return metaEnv[name];
+        if (typeof process !== 'undefined' && process.env && process.env[name]) return process.env[name];
+      } catch (e) {}
+      return undefined;
+    };
+
+    const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+    if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+      setError("ກະລຸນາຕັ້ງຄ່າ VITE_SUPABASE_URL ໃນ Vercel Settings ຫຼື Environment Variables");
       setIsLoading(false);
       return;
     }
@@ -129,6 +139,16 @@ const App: React.FC = () => {
     if (!error && state.currentUser?.id === updatedUser.id) {
       setState(prev => ({ ...prev, currentUser: updatedUser }));
     }
+  };
+
+  const verifyEntry = async (id: string) => {
+    const { error } = await supabase
+      .from('entries')
+      .update({ status: EntryStatus.VERIFIED })
+      .eq('id', id);
+    
+    if (error) throw error;
+    await fetchInitialData(false);
   };
 
   const addUser = async (user: User) => { await supabase.from('users').insert([user]); };
@@ -228,6 +248,7 @@ const App: React.FC = () => {
             onAddStore={addStore} onRemoveStore={removeStore}
             onAddShift={addShiftType} onRemoveShift={removeShiftType}
             onUpdateUser={updateUser}
+            onVerifyEntry={verifyEntry}
           />
         )}
         {activeTab === 'profile' && <Profile user={state.currentUser} onUpdate={updateUser} />}

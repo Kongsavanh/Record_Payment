@@ -1,14 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   AppState, 
   User, 
   UserRole, 
   Store, 
-  ShiftType 
+  ShiftType,
+  EntryStatus
 } from '../types';
-import { TRANSLATIONS } from '../constants';
-import { Users, Store as StoreIcon, Clock, Plus, Trash2, Shield, Key, UserPlus, UserCog } from 'lucide-react';
+import { TRANSLATIONS as T } from '../constants';
+import { formatCurrency, formatDate } from '../utils';
+import { 
+  Users, 
+  Store as StoreIcon, 
+  Clock, 
+  Plus, 
+  Trash2, 
+  Shield, 
+  Key, 
+  UserPlus, 
+  ShieldCheck,
+  ClipboardList,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 
 interface AdminProps {
   state: AppState;
@@ -18,7 +33,8 @@ interface AdminProps {
   onRemoveStore: (id: string) => void;
   onAddShift: (shift: ShiftType) => void;
   onRemoveShift: (id: string) => void;
-  onUpdateUser?: (user: User) => void; // Added for password reset support
+  onUpdateUser?: (user: User) => void;
+  onVerifyEntry?: (id: string) => Promise<void>;
 }
 
 const Admin: React.FC<AdminProps> = ({ 
@@ -29,22 +45,35 @@ const Admin: React.FC<AdminProps> = ({
   onRemoveStore, 
   onAddShift, 
   onRemoveShift,
-  onUpdateUser
+  onUpdateUser,
+  onVerifyEntry
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'stores' | 'shifts'>('users');
+  const [activeTab, setActiveTab] = useState<'review' | 'users' | 'stores' | 'shifts'>('review');
   
-  // Input states for New User
   const [newUserName, setNewUserName] = useState('');
   const [newUserUsername, setNewUserUsername] = useState('');
   const [newUserPass, setNewUserPass] = useState('');
   const [newUserRole, setNewUserRole] = useState<UserRole>(UserRole.STAFF);
 
-  // States for Password Reset
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState('');
 
   const [newStoreName, setNewStoreName] = useState('');
   const [newShiftName, setNewShiftName] = useState('');
+
+  const pendingEntries = useMemo(() => {
+    return state.entries.filter(e => e.status === EntryStatus.PENDING);
+  }, [state.entries]);
+
+  const handleVerify = async (id: string) => {
+    if (!onVerifyEntry) return;
+    try {
+      await onVerifyEntry(id);
+      alert('ຢືນຢັນຂໍ້ມູນສຳເລັດແລ້ວ');
+    } catch (error) {
+      alert('ເກີດຂໍ້ຜິດພາດໃນການຢືນຢັນ');
+    }
+  };
 
   const handleAddUser = () => {
     if (!newUserName || !newUserUsername || !newUserPass) return;
@@ -89,6 +118,19 @@ const Admin: React.FC<AdminProps> = ({
       {/* Navigation */}
       <div className="flex border-b border-slate-200 gap-6 overflow-x-auto no-scrollbar">
         <button 
+          onClick={() => setActiveTab('review')}
+          className={`pb-3 text-sm font-bold transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'review' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          <span>{T.verification}</span>
+          {pendingEntries.length > 0 && (
+            <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-bounce">
+              {pendingEntries.length}
+            </span>
+          )}
+          {activeTab === 'review' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-600 rounded-t-full" />}
+        </button>
+        <button 
           onClick={() => setActiveTab('users')}
           className={`pb-3 text-sm font-bold transition-all relative whitespace-nowrap flex items-center gap-2 ${activeTab === 'users' ? 'text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
         >
@@ -116,9 +158,83 @@ const Admin: React.FC<AdminProps> = ({
 
       {/* Content */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
+        {activeTab === 'review' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between mb-4">
+               <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                 <ShieldCheck className="w-5 h-5 text-emerald-600" />
+                 ລາຍການລໍຖ້າການຢືນຢັນ
+               </h3>
+               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                 ພົບທັງໝົດ {pendingEntries.length} ລາຍການ
+               </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {pendingEntries.map(entry => (
+                <div key={entry.id} className="p-6 border border-slate-100 rounded-2xl bg-slate-50 hover:bg-white hover:border-emerald-200 transition-all shadow-sm">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{T.date}</p>
+                        <p className="font-bold text-slate-800">{formatDate(entry.date)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{T.store}</p>
+                        <p className="font-bold text-slate-800">{state.stores.find(s => s.id === entry.store_id)?.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{T.staff}</p>
+                        <p className="font-bold text-emerald-600">{state.users.find(u => u.id === entry.user_id)?.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{T.finalBalance}</p>
+                        <p className="font-black text-slate-900 text-lg">{formatCurrency(entry.final_balance)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => handleVerify(entry.id)}
+                        className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+                      >
+                        <CheckCircle2 className="w-5 h-5" />
+                        <span>{T.approve}</span>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {entry.expenses.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200/50">
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ລາຍການຄ່າໃຊ້ຈ່າຍ ({entry.expenses.length})</p>
+                       <div className="flex flex-wrap gap-2">
+                         {entry.expenses.map((ex, idx) => (
+                           <div key={idx} className="bg-white px-3 py-1.5 rounded-lg border border-slate-200 flex items-center gap-2">
+                             <span className="text-xs text-slate-600 font-medium">{ex.description}:</span>
+                             <span className="text-xs text-red-500 font-bold">{formatCurrency(ex.amount)}</span>
+                           </div>
+                         ))}
+                       </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {pendingEntries.length === 0 && (
+                <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                   <div className="bg-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                   </div>
+                   <h4 className="font-bold text-slate-800">ທຸກຢ່າງຮຽບຮ້ອຍ!</h4>
+                   <p className="text-slate-400 text-sm mt-1">ບໍ່ມີລາຍການໃໝ່ທີ່ລໍຖ້າການກວດສອບ</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'users' && (
           <div className="space-y-8">
-            {/* Add User Form */}
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
               <div className="flex items-center gap-2 mb-4">
                 <UserPlus className="w-5 h-5 text-emerald-600" />
@@ -171,12 +287,11 @@ const Admin: React.FC<AdminProps> = ({
                   className="flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{TRANSLATIONS.add}</span>
+                  <span>{T.add}</span>
                 </button>
               </div>
             </div>
 
-            {/* Users List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {state.users.map(user => (
                 <div key={user.id} className="p-5 border border-slate-100 rounded-2xl bg-white hover:border-emerald-200 transition-all group relative overflow-hidden">
@@ -215,7 +330,6 @@ const Admin: React.FC<AdminProps> = ({
                     </div>
                   </div>
 
-                  {/* Password Reset Section */}
                   {resettingUserId === user.id && (
                     <div className="mt-4 pt-4 border-t border-slate-100 flex gap-2 animate-fadeIn">
                       <input 
@@ -257,7 +371,7 @@ const Admin: React.FC<AdminProps> = ({
                 className="flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
               >
                 <Plus className="w-4 h-4" />
-                <span>{TRANSLATIONS.add}</span>
+                <span>{T.add}</span>
               </button>
             </div>
 
@@ -300,7 +414,7 @@ const Admin: React.FC<AdminProps> = ({
                 className="flex items-center justify-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
               >
                 <Plus className="w-4 h-4" />
-                <span>{TRANSLATIONS.add}</span>
+                <span>{T.add}</span>
               </button>
             </div>
 

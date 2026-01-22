@@ -5,7 +5,8 @@ import {
   Entry, 
   Expense, 
   Store, 
-  ShiftType 
+  ShiftType,
+  EntryStatus 
 } from '../types';
 import { TRANSLATIONS as T } from '../constants';
 import { getTodayStr, formatCurrency } from '../utils';
@@ -91,13 +92,13 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
         expenses: expenses.map(ex => ({ ...ex, entry_id: entryId })),
         total_expenses: totalExpenses,
         final_balance: finalBalance,
+        status: EntryStatus.PENDING,
         created_at: new Date().toISOString()
       };
       
       await onAddEntry(newEntry);
       
-      // UI Feedback
-      alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ');
+      alert('ບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ. ກະລຸນາລໍຖ້າໃຫ້ Admin ກວດສອບ.');
       onSuccess();
     } catch (error) {
       console.error('Error saving entry:', error);

@@ -4,6 +4,11 @@ export enum UserRole {
   STAFF = 'STAFF'
 }
 
+export enum EntryStatus {
+  PENDING = 'PENDING',
+  VERIFIED = 'VERIFIED'
+}
+
 export interface User {
   id: string;
   name: string;
@@ -44,6 +49,7 @@ export interface Entry {
   expenses: Expense[];
   total_expenses: number;
   final_balance: number;
+  status: EntryStatus;
   created_at: string;
 }
 

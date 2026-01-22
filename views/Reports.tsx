@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { AppState, UserRole } from '../types';
+import { AppState, UserRole, EntryStatus } from '../types';
 import { formatDate, formatCurrency, getTodayStr } from '../utils';
 import { 
   Search, 
@@ -16,7 +16,9 @@ import {
   FileText as FilePdf,
   Loader2,
   Wallet,
-  ArrowRightLeft
+  ArrowRightLeft,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { TRANSLATIONS } from '../constants';
 import * as XLSX from 'xlsx';
@@ -55,14 +57,17 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
     });
   }, [state.entries, startDate, endDate, filterStore, filterUser, isStaff, state.currentUser]);
 
+  // Totals only for VERIFIED entries in report summary
   const totals = useMemo(() => {
-    return filteredEntries.reduce((acc, curr) => ({
-      rev: acc.rev + curr.total_revenue,
-      trans: acc.trans + curr.transfer_amount,
-      exp: acc.exp + curr.total_expenses,
-      bal: acc.bal + curr.final_balance,
-      cashInDrawer: acc.cashInDrawer + curr.actual_cash_in_drawer
-    }), { rev: 0, trans: 0, exp: 0, bal: 0, cashInDrawer: 0 });
+    return filteredEntries
+      .filter(e => e.status === EntryStatus.VERIFIED)
+      .reduce((acc, curr) => ({
+        rev: acc.rev + curr.total_revenue,
+        trans: acc.trans + curr.transfer_amount,
+        exp: acc.exp + curr.total_expenses,
+        bal: acc.bal + curr.final_balance,
+        cashInDrawer: acc.cashInDrawer + curr.actual_cash_in_drawer
+      }), { rev: 0, trans: 0, exp: 0, bal: 0, cashInDrawer: 0 });
   }, [filteredEntries]);
 
   const getStoreName = (id: string) => state.stores.find(s => s.id === id)?.name || 'N/A';
@@ -85,7 +90,8 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
       'ຍອດໂອນ': e.transfer_amount,
       'ເງິນສົດໃນລິ້ນຊັກ': e.actual_cash_in_drawer,
       'ຄ່າໃຊ້ຈ່າຍ': e.total_expenses,
-      'ຍອດຄົງເຫຼືອຈິງ': e.final_balance
+      'ຍອດຄົງເຫຼືອຈິງ': e.final_balance,
+      'ສະຖານະ': e.status === EntryStatus.VERIFIED ? 'ກວດແລ້ວ' : 'ລໍຖ້າກວດ'
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -207,6 +213,9 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
             </select>
           </div>
         </div>
+        <div className="mt-4 p-2 bg-slate-50 rounded-lg text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">
+          * ສະຫຼຸບຍອດລວມສະເພາະຂໍ້ມູນທີ່ກວດສອບແລ້ວເທົ່ານັ້ນ
+        </div>
       </div>
 
       <div ref={reportRef} className="space-y-6 bg-white p-4 rounded-3xl">
@@ -262,10 +271,7 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.date}</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.store}</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.staff}</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.totalRevenue}</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.transferAmount}</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.actualCashInDrawer}</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.expenses}</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.status}</th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{TRANSLATIONS.finalBalance}</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider no-print"></th>
                 </tr>
@@ -287,21 +293,17 @@ const Reports: React.FC<ReportsProps> = ({ state, onDeleteEntry }) => {
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{getShiftName(entry.shift_type_id)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-slate-900">{formatCurrency(entry.total_revenue)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" />
-                        <span className="text-sm font-bold text-slate-700">{formatCurrency(entry.transfer_amount)}</span>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        entry.status === EntryStatus.VERIFIED 
+                        ? 'bg-emerald-100 text-emerald-600 border border-emerald-200' 
+                        : 'bg-amber-100 text-amber-600 border border-amber-200'
+                      }`}>
+                        {entry.status === EntryStatus.VERIFIED ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+                        {entry.status === EntryStatus.VERIFIED ? TRANSLATIONS.verified : TRANSLATIONS.pending}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Wallet className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="text-sm font-bold text-slate-800">{formatCurrency(entry.actual_cash_in_drawer)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-red-500">{formatCurrency(entry.total_expenses)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-emerald-600">{formatCurrency(entry.final_balance)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-bold text-slate-900">{formatCurrency(entry.final_balance)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-center no-print">
                       <button 
                         onClick={() => handleDelete(entry.id)}

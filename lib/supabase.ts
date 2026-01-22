@@ -1,10 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Casting to any to avoid TS errors during build if env types are not defined
-const env = (import.meta as any).env;
+// Safe way to access environment variables in different environments
+const getEnv = (name: string): string | undefined => {
+  try {
+    // Check Vite/ESM environment
+    const metaEnv = (import.meta as any).env;
+    if (metaEnv && metaEnv[name]) return metaEnv[name];
+    
+    // Check Node/CommonJS/Injected environment
+    if (typeof process !== 'undefined' && process.env && process.env[name]) {
+      return process.env[name];
+    }
+  } catch (e) {
+    // Ignore errors
+  }
+  return undefined;
+};
 
-const supabaseUrl = env.VITE_SUPABASE_URL;
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = getEnv('VITE_SUPABASE_URL');
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY');
 
 if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
   console.error(
