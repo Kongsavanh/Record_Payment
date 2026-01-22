@@ -1,15 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-/**
- * ສໍາລັບ Vite ແອັບພລິເຄຊັນ, ເຮົາຕ້ອງໃຊ້ import.meta.env ເທົ່ານັ້ນ
- * ແລະ ຕົວແປຕ້ອງຂຶ້ນຕົ້ນດ້ວຍ VITE_ ເພື່ອໃຫ້ Browser ສາມາດເຫັນໄດ້
- */
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Casting to any to avoid TS errors during build if env types are not defined
+const env = (import.meta as any).env;
 
-// ກວດສອບເບື້ອງຕົ້ນໃນ Console ເພື່ອຊ່ວຍໃນການ Debug
-if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-  console.warn("ຄຳເຕືອນ: ບໍ່ພົບ VITE_SUPABASE_URL ທີ່ຖືກຕ້ອງ. ກະລຸນາຕັ້ງຄ່າໃນ Environment Variables.");
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('placeholder')) {
+  console.error(
+    "Supabase configuration is missing! \n" +
+    "Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your environment."
+  );
 }
 
 export const supabase = createClient(

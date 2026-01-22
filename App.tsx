@@ -42,13 +42,20 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
   const fetchInitialData = useCallback(async (showLoader = false) => {
+    // Check if Supabase is configured before fetching
+    const env = (import.meta as any).env;
+    if (!env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL.includes('placeholder')) {
+      setError("ກະລຸນາຕັ້ງຄ່າ VITE_SUPABASE_URL ໃນ Vercel Settings");
+      setIsLoading(false);
+      return;
+    }
+
     if (showLoader) {
       setIsLoading(true);
       setError(null);
     }
     
     try {
-      // Set a timeout for the fetch operation to avoid infinite loading
       const fetchPromise = Promise.all([
         supabase.from('users').select('*'),
         supabase.from('stores').select('*'),
@@ -155,14 +162,8 @@ const App: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-        <div className="relative">
-          <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-             <div className="w-2 h-2 bg-emerald-600 rounded-full animate-ping"></div>
-          </div>
-        </div>
-        <p className="mt-4 text-slate-500 font-bold">ກຳລັງໂຫຼດຂໍ້ມູນຖານຂໍ້ມູນ...</p>
-        <p className="text-xs text-slate-400 mt-2">ຖ້າໜ້າຈໍຄ້າງດົນເກີນໄປ, ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ອິນເຕີເນັດ</p>
+        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
+        <p className="text-slate-500 font-bold tracking-tight">ກຳລັງໂຫຼດຂໍ້ມູນຖານຂໍ້ມູນ...</p>
       </div>
     );
   }
@@ -170,24 +171,21 @@ const App: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-        <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md">
+        <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md w-full">
           <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ຖານຂໍ້ມູນໄດ້</h2>
-          <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-            {error.includes("VITE_SUPABASE_URL") ? "ທ່ານຍັງບໍ່ທັນໄດ້ຕັ້ງຄ່າ API Keys ໃນ Vercel Settings." : error}
+          <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ໄດ້</h2>
+          <p className="text-slate-500 text-sm mb-6 leading-relaxed px-2">
+            {error}
           </p>
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => fetchInitialData(true)}
-              className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
-            >
-              <RefreshCcw className="w-4 h-4" />
-              ລອງໃໝ່ອີກຄັ້ງ
-            </button>
-            <p className="text-[10px] text-slate-400">ກະລຸນາກວດສອບ Environment Variables ຂອງທ່ານ</p>
-          </div>
+          <button 
+            onClick={() => fetchInitialData(true)}
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+          >
+            <RefreshCcw className="w-4 h-4" />
+            ລອງໃໝ່ອີກຄັ້ງ
+          </button>
         </div>
       </div>
     );
