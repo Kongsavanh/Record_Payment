@@ -126,7 +126,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
+    <div className="space-y-6 animate-fadeIn pb-24 sm:pb-12">
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
@@ -148,7 +148,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
                 type="date" 
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all font-medium appearance-none"
               />
             </div>
             <div>
@@ -227,7 +227,7 @@ const EntryForm: React.FC<EntryFormProps> = ({ state, onAddEntry, onSuccess }) =
                 value={newExpDesc}
                 onChange={(e) => setNewExpDesc(e.target.value)}
                 placeholder="ຕົວຢ່າງ: ຄ່າໄຟຟ້າ..."
-                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-base"
               />
             </div>
             <NumberInput 

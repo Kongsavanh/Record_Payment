@@ -29,7 +29,8 @@ import {
   Loader2,
   RefreshCcw,
   AlertTriangle,
-  Wallet
+  Wallet,
+  WifiOff
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -41,6 +42,7 @@ const App: React.FC = () => {
     currentUser: null,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isSlowNetwork, setIsSlowNetwork] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'home' | 'record' | 'reports' | 'admin' | 'profile'>('home');
 
@@ -63,9 +65,15 @@ const App: React.FC = () => {
 
     if (showLoader) {
       setIsLoading(true);
+      setIsSlowNetwork(false);
       setError(null);
     }
     
+    // Slow network detection timer
+    const slowNetworkTimer = setTimeout(() => {
+      if (showLoader) setIsSlowNetwork(true);
+    }, 3000);
+
     try {
       const fetchPromise = Promise.all([
         supabase.from('users').select('*'),
@@ -74,8 +82,9 @@ const App: React.FC = () => {
         supabase.from('entries').select('*, expenses(*)').order('created_at', { ascending: false })
       ]);
 
+      // Increased timeout to 30 seconds for slower mobile networks
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ")), 15000)
+        setTimeout(() => reject(new Error("ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນໃຊ້ເວລາດົນເກີນໄປ (Timeout)")), 30000)
       );
 
       const [usersRes, storesRes, shiftsRes, entriesRes] = await Promise.race([
@@ -99,7 +108,9 @@ const App: React.FC = () => {
       console.error('Error fetching data:', err);
       setError(err.message || "ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ຂໍ້ມູນ.");
     } finally {
+      clearTimeout(slowNetworkTimer);
       setIsLoading(false);
+      setIsSlowNetwork(false);
     }
   }, []);
 
@@ -255,6 +266,13 @@ const App: React.FC = () => {
            </div>
            <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mb-2" />
            <p className="text-slate-500 font-bold tracking-tight text-sm">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
+           
+           {isSlowNetwork && (
+             <div className="mt-4 pt-4 border-t border-slate-100 animate-fadeIn">
+               <p className="text-xs text-amber-500 font-medium">ການເຊື່ອມຕໍ່ອິນເຕີເນັດຂ້ອນຂ້າງຊ້າ...</p>
+               <p className="text-[10px] text-slate-400 mt-1">ກະລຸນາລໍຖ້າຈັກໜ້ອຍ</p>
+             </div>
+           )}
         </div>
       </div>
     );
@@ -265,7 +283,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-red-100 max-w-md w-full">
           <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-8 h-8 text-red-500" />
+            <WifiOff className="w-8 h-8 text-red-500" />
           </div>
           <h2 className="text-xl font-bold text-slate-800 mb-2">ບໍ່ສາມາດເຊື່ອມຕໍ່ໄດ້</h2>
           <p className="text-slate-500 text-sm mb-6 leading-relaxed px-2">{error}</p>
