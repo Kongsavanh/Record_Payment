@@ -28,7 +28,8 @@ import {
   Plus,
   Loader2,
   RefreshCcw,
-  AlertTriangle
+  AlertTriangle,
+  Wallet
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -248,8 +249,13 @@ const App: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
-        <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-bold tracking-tight">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
+        <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 flex flex-col items-center animate-bounce">
+           <div className="bg-emerald-100 p-4 rounded-2xl mb-4">
+             <Wallet className="w-8 h-8 text-emerald-600" />
+           </div>
+           <Loader2 className="w-6 h-6 text-emerald-600 animate-spin mb-2" />
+           <p className="text-slate-500 font-bold tracking-tight text-sm">ກຳລັງໂຫຼດຂໍ້ມູນ...</p>
+        </div>
       </div>
     );
   }
